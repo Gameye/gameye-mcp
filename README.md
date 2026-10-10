@@ -90,7 +90,10 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 - Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
 - Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
 - To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.2`.
-- `gameye_create_token` writes its file inside the container, which `--rm` deletes. If you enable admin tools in Docker, mount a directory (`-v /absolute/dir:/out`) and pass an `outputPath` under `/out`.
+- Files the server writes stay inside the container, and `--rm` deletes them:
+  - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
+  - `gameye_create_token` (admin tools only) writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
+  - The server runs as uid 1000, so on Linux the mounted directory must be writable by that user.
 
 ## Token scopes
 
