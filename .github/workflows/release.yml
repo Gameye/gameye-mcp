@@ -3,7 +3,8 @@ name: Release
 # Pushing a version tag (vX.Y.Z or vX.Y.Z-beta.N) on main publishes that
 # version to npm with provenance, through npm trusted publishing (GitHub OIDC):
 # no npm token is stored anywhere. The publish job waits for approval in the
-# `release` environment. See CONTRIBUTING.md, "Releasing".
+# `release` environment; after it, publish-image pushes the multi-arch image
+# to ghcr.io/gameye/gameye-mcp. See CONTRIBUTING.md, "Releasing".
 
 on:
   push:
@@ -106,7 +107,7 @@ jobs:
   # Publishes the exact tarball verify tested. No checkout, install or build
   # runs here, so no dependency code shares a job with the OIDC credential.
   publish-npm:
-    needs: [verify, test-node22]
+    needs: [verify, test-node22, smoke-image]
     runs-on: ubuntu-24.04
     environment: release
     permissions:
@@ -156,3 +157,93 @@ jobs:
             sleep 10
           done
           [ "$actual" = "$expected" ] || { echo "::error::registry integrity $actual does not match the verified tarball $expected"; exit 1; }
+
+  # Builds the image from the tagged commit for amd64 and arm64 and runs the
+  # stdio smoke test against both. Read-only: npm install scripts and test code
+  # run here, never in a job that can push. Runs before npm publish, so an image
+  # problem stops the whole release.
+  smoke-image:
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build amd64
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: gameye-mcp:smoke-amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build arm64
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: gameye-mcp:smoke-arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Stdio smoke test (amd64)
+        env:
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/amd64","-e","GAMEYE_API_TOKEN","gameye-mcp:smoke-amd64"]'
+        run: npm run test:smoke
+      - name: Stdio smoke test (arm64, emulated)
+        env:
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/arm64","-e","GAMEYE_API_TOKEN","gameye-mcp:smoke-arm64"]'
+        run: npm run test:smoke
+
+  # Pushes amd64 + arm64 to GHCR with provenance and an SBOM, rebuilt from the
+  # same commit and BuildKit cache the smoke test used. It holds packages: write
+  # and so runs no Node, npm or repository code: only Docker's own build, in
+  # which the Dockerfile installs dependencies with install scripts off.
+  publish-image:
+    needs: [smoke-image, publish-npm]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/gameye/gameye-mcp
+          # X.Y.Z and X.Y; latest only for versions without a prerelease part.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          flavor: latest=auto
+      - name: Build and push amd64 + arm64
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha

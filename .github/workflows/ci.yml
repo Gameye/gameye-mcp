@@ -30,6 +30,24 @@ jobs:
       - name: Check package contents
         run: npm pack --dry-run --json | node scripts/check-pack.mjs
 
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the image (amd64)
+        run: docker build -t gameye-mcp:ci .
+      - name: Stdio smoke test against the image
+        env:
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","-e","GAMEYE_API_TOKEN","gameye-mcp:ci"]'
+        run: npm run test:smoke
+      - name: Image runs as a non-root user
+        run: '[ "$(docker run --rm --entrypoint id gameye-mcp:ci -u)" != "0" ]'
+
   internal-refs:
     runs-on: ubuntu-latest
     steps:
