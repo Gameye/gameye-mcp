@@ -42,7 +42,7 @@ Releases are cut by maintainers from a version tag on `main`; npm publishing nee
 2. After it merges, tag the merge commit `vX.Y.Z` (or `vX.Y.Z-beta.N` for a prerelease) and push the tag.
 3. The `Release` workflow checks the tag is on `main` and matches `package.json`, runs the same checks as CI (tests on Node 22 and 24, typecheck, build, the internal-reference scan and a full-history gitleaks secret scan) plus the stdio smoke test on the packed tarball, and packs the tarball.
 4. A maintainer approves the run in the `release` environment. It then publishes that exact tarball to npm through trusted publishing (GitHub OIDC), with provenance. Prereleases go to the `beta` dist-tag, so `npx -y gameye-mcp` keeps installing the latest stable version.
-5. After npm, the workflow builds the container image, smoke-tests it, and pushes `ghcr.io/gameye/gameye-mcp` for amd64 and arm64, tagged `X.Y.Z`, `X.Y` and (stable versions only) `latest`.
+5. Before anything publishes, the workflow also builds the container image for amd64 and arm64 and smoke-tests both. After npm, it pushes `ghcr.io/gameye/gameye-mcp`, tagged `X.Y.Z`, `X.Y` and (stable versions only) `latest`.
 
 Version 0.1.0 was published by hand, because npm trusted publishing cannot create a new package; every later version goes through the workflow.
 
