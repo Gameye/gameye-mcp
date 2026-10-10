@@ -64,7 +64,33 @@ Most clients (Claude Desktop, Cursor, Windsurf and others) accept an `mcpServers
 
 Restart the client after you change its configuration.
 
-`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.1.0` (or `"args": ["-y", "gameye-mcp@0.1.0"]`).
+`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.1.2` (or `"args": ["-y", "gameye-mcp@0.1.2"]`).
+
+### Docker
+
+No Node.js on the machine? Run the published image instead. It works on amd64 and arm64:
+
+```json
+{
+  "mcpServers": {
+    "gameye": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "GAMEYE_API_TOKEN", "-e", "GAMEYE_ENV", "ghcr.io/gameye/gameye-mcp"],
+      "env": {
+        "GAMEYE_API_TOKEN": "<your-token>",
+        "GAMEYE_ENV": "sandbox"
+      }
+    }
+  }
+}
+```
+
+With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- docker run -i --rm -e GAMEYE_API_TOKEN ghcr.io/gameye/gameye-mcp`.
+
+- Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
+- Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
+- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.2`.
+- `gameye_create_token` writes its file inside the container, which `--rm` deletes. If you enable admin tools in Docker, mount a directory (`-v /absolute/dir:/out`) and pass an `outputPath` under `/out`.
 
 ## Token scopes
 
