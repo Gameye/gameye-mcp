@@ -2,6 +2,10 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## 0.1.1
+
+First release published by the Release workflow through npm trusted publishing, with provenance. No changes to the server.
+
 ## 0.1.0
 
 First public release, in beta.
