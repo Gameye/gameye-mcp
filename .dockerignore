@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+dist
+coverage
+docs
+spec
+scripts
+tests
+*.md
+!README.md
+.env*
+*.tgz
