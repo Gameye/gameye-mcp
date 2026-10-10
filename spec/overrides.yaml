@@ -1,0 +1,25 @@
+# MCP tool names (gameye-mcp), keyed by operationId in spec/client.yaml.
+# admin_gated marks tools that need an admin-level scope and sit behind an
+# explicit opt-in. Read by tests/parity.test.ts.
+#
+# Reduced copy of the tools: map in gameye-skills' spec/overrides.yaml, made by
+# scripts/reduce-overrides.mjs (npm run sync-spec). Do not edit by hand.
+
+tools:
+  session-run: {tool: gameye_launch_session}
+  session-list: {tool: gameye_list_sessions}
+  describe-session: {tool: gameye_describe_session}
+  session-stop: {tool: gameye_stop_session}
+  join-session: {tool: gameye_player_join}
+  leave-session: {tool: gameye_player_leave}
+  artifacts: {tool: gameye_get_artifacts}
+  stream-logs: {tool: gameye_get_logs}
+  create-token: {tool: gameye_create_token, admin_gated: true}
+  list-applications: {tool: gameye_list_applications}
+  create-application: {tool: gameye_create_application, admin_gated: true}
+  edit-application: {tool: gameye_edit_application, admin_gated: true}
+  enable-tag: {tool: gameye_enable_tag}
+  list-application-tags-upstream: {tool: gameye_list_registry_tags}
+  list-regions: {tool: gameye_list_regions}
+  get-available-locations: {tool: gameye_get_locations}
+  tag-exists: {tool: gameye_check_tag}

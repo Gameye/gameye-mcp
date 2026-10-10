@@ -1,0 +1,143 @@
+name: Release
+
+# Pushing a version tag (vX.Y.Z or vX.Y.Z-beta.N) on main publishes that
+# version to npm with provenance, through npm trusted publishing (GitHub OIDC):
+# no npm token is stored anywhere. The publish job waits for approval in the
+# `release` environment. See CONTRIBUTING.md, "Releasing".
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: "8.21.2"
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      dist-tag: ${{ steps.version.outputs.dist-tag }}
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Tag is on main and matches package.json
+        id: version
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+          version="${GITHUB_REF_NAME#v}"
+          [ "$version" = "$(node -p "require('./package.json').version")" ] || { echo "::error::tag $GITHUB_REF_NAME does not match package.json version"; exit 1; }
+          case "$version" in *-*) dist_tag=beta ;; *) dist_tag=latest ;; esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dist-tag=$dist_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Install gitleaks
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "${base}/${archive}"
+          curl -fsSLO "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar -xzf "${archive}" gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+          rm -f gitleaks "${archive}" "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+      - name: Scan full history for secrets
+        run: gitleaks detect --source . --redact --no-banner --verbose
+
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit -p tsconfig.test.json
+      - run: npm run build
+      - name: Scan for internal references
+        run: |
+          node scripts/scan-internal-refs.mjs --self-test
+          node scripts/scan-internal-refs.mjs
+
+      - name: Pack and check contents
+        id: pack
+        run: |
+          npm pack --ignore-scripts --json > "$RUNNER_TEMP/pack.json"
+          node scripts/check-pack.mjs < "$RUNNER_TEMP/pack.json"
+          echo "tarball=$(node -p 'require(process.argv[1])[0].filename' "$RUNNER_TEMP/pack.json")" >> "$GITHUB_OUTPUT"
+      - name: Smoke test the packed tarball as installed
+        run: |
+          npm install --global --prefix "$RUNNER_TEMP/installed" --ignore-scripts "./${{ steps.pack.outputs.tarball }}"
+          GAMEYE_MCP_SMOKE_CMD="[\"$RUNNER_TEMP/installed/bin/gameye-mcp\"]" npm run test:smoke
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-tarball
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # The lowest supported Node version, as in CI.
+  test-node22:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:smoke
+
+  # Publishes the exact tarball verify tested. No checkout, install or build
+  # runs here, so no dependency code shares a job with the OIDC credential.
+  publish-npm:
+    needs: [verify, test-node22]
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: npm supports trusted publishing
+        run: |
+          node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)' "$(npm --version)" \
+            || { echo "::error::npm $(npm --version) is older than 11.5.1, which trusted publishing needs"; exit 1; }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-tarball
+      - name: Publish
+        env:
+          TARBALL: ${{ needs.verify.outputs.tarball }}
+          DIST_TAG: ${{ needs.verify.outputs.dist-tag }}
+        run: npm publish "./$TARBALL" --tag "$DIST_TAG" --access public --ignore-scripts
+      - name: Published package is the verified tarball
+        env:
+          TARBALL: ${{ needs.verify.outputs.tarball }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          expected="sha512-$(openssl dgst -sha512 -binary "$TARBALL" | openssl base64 -A)"
+          for _ in 1 2 3 4 5 6; do
+            actual="$(npm view "gameye-mcp@$VERSION" dist.integrity 2>/dev/null || true)"
+            [ -n "$actual" ] && break
+            sleep 10
+          done
+          [ "$actual" = "$expected" ] || { echo "::error::registry integrity $actual does not match the verified tarball $expected"; exit 1; }

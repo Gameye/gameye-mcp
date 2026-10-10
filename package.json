@@ -1,0 +1,60 @@
+{
+  "name": "gameye-mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.gameye/gameye-mcp",
+  "description": "MCP server for the Gameye game server orchestration API: launch and inspect sessions, check image tags, fetch logs and artifacts from any MCP client",
+  "main": "dist/index.js",
+  "bin": {
+    "gameye-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "!dist/demos/**"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node --esm src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts",
+    "sync-spec": "node scripts/sync-spec.mjs",
+    "check-spec": "node scripts/sync-spec.mjs --check",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "gameye",
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "game-server",
+    "game-server-hosting",
+    "multiplayer",
+    "claude"
+  ],
+  "author": "Gameye B.V.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gameye/gameye-mcp.git"
+  },
+  "homepage": "https://github.com/Gameye/gameye-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Gameye/gameye-mcp/issues"
+  },
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

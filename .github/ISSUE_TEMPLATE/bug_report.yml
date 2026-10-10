@@ -1,0 +1,65 @@
+name: Bug report
+description: A tool in gameye-mcp misbehaves, errors or returns something wrong.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste API tokens, session IDs, IP addresses or other private data.** Issues are public. Replace them with placeholders such as `<token>` or `<session-id>`.
+  - type: input
+    id: version
+    attributes:
+      label: Server version
+      description: The `Server version` line from `gameye_context`, or the startup line in your MCP client's logs.
+      placeholder: gameye-mcp 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - sandbox
+        - production
+        - custom (GAMEYE_API_URL)
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: Claude Code 2.1, Cursor 1.4, Claude Desktop…
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool
+      placeholder: gameye_launch_session
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The tool input (with private values replaced) and the result you got.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: identifier
+    attributes:
+      label: Error identifier
+      description: If the result shows an `identifier` (trace ID) from the Gameye API, paste it. It lets Gameye find the request without any private data.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed tokens, session IDs and other private data from this report.
+          required: true
