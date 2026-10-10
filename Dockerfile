@@ -17,7 +17,7 @@ FROM ${NODE_IMAGE}
 LABEL org.opencontainers.image.source="https://github.com/Gameye/gameye-mcp" \
       org.opencontainers.image.description="MCP server for the Gameye game server orchestration API (stdio)" \
       org.opencontainers.image.licenses="MIT" \
-      io.modelcontextprotocol.server.name="io.github.gameye/gameye-mcp"
+      io.modelcontextprotocol.server.name="io.github.Gameye/gameye-mcp"
 # tini forwards SIGTERM to node and reaps it, so `docker stop` ends the server promptly.
 RUN apk add --no-cache tini
 WORKDIR /app

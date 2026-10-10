@@ -4,7 +4,8 @@ name: Release
 # version to npm with provenance, through npm trusted publishing (GitHub OIDC):
 # no npm token is stored anywhere. The publish job waits for approval in the
 # `release` environment; after it, publish-image pushes the multi-arch image
-# to ghcr.io/gameye/gameye-mcp. See CONTRIBUTING.md, "Releasing".
+# to ghcr.io/gameye/gameye-mcp, and publish-registry lists it in the MCP
+# Registry. See CONTRIBUTING.md, "Releasing".
 
 on:
   push:
@@ -247,3 +248,30 @@ jobs:
           provenance: mode=max
           sbom: true
           cache-from: type=gha
+
+  # Lists this version in the official MCP Registry (registry.modelcontextprotocol.io).
+  # GitHub OIDC grants the io.github.Gameye/* namespace; no token is stored.
+  # The registry checks that npm's mcpName and the image label name the server.
+  publish-registry:
+    needs: [publish-npm, publish-image]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: "1.8.1"
+      MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install mcp-publisher
+        run: |
+          archive=mcp-publisher_linux_amd64.tar.gz
+          curl -fsSLo "$archive" "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/${archive}"
+          echo "${MCP_PUBLISHER_SHA256}  ${archive}" | sha256sum --check
+          tar -xzf "$archive" mcp-publisher
+      - name: Publish to the MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

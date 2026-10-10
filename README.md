@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server for the [Gameye](https://gameye.com) game server orchestration API. It lets an AI agent (Claude Code, Claude Desktop, Cursor, or any MCP client) launch and inspect game server sessions, check image tags and regions, and fetch logs and artifacts. You talk to it in plain language, and you don't have to leave your editor.
 
-> **Status: beta** (`0.x`). Tools, inputs and outputs may change between releases, and there may be bugs. The server says so to every client that connects, on startup, and in `gameye_context`. It is published on npm as [`gameye-mcp`](https://www.npmjs.com/package/gameye-mcp); see the [changelog](https://github.com/Gameye/gameye-mcp/blob/main/CHANGELOG.md) for what changed in each release.
+> **Status: beta** (`0.x`). Tools, inputs and outputs may change between releases, and there may be bugs. The server says so to every client that connects, on startup, and in `gameye_context`. It is published on npm as [`gameye-mcp`](https://www.npmjs.com/package/gameye-mcp), as a container image at `ghcr.io/gameye/gameye-mcp`, and in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Gameye/gameye-mcp`; see the [changelog](https://github.com/Gameye/gameye-mcp/blob/main/CHANGELOG.md) for what changed in each release.
 
 ## Quick start
 
@@ -64,7 +64,7 @@ Most clients (Claude Desktop, Cursor, Windsurf and others) accept an `mcpServers
 
 Restart the client after you change its configuration.
 
-`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.1.2` (or `"args": ["-y", "gameye-mcp@0.1.2"]`).
+`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.1.3` (or `"args": ["-y", "gameye-mcp@0.1.3"]`).
 
 ### Docker
 
@@ -89,7 +89,7 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 
 - Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
 - Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
-- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.2`.
+- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.3`.
 - Files the server writes stay inside the container, and `--rm` deletes them:
   - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
   - `gameye_create_token` (admin tools only) writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
