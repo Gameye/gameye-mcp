@@ -121,6 +121,20 @@ jobs:
         run: |
           node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)' "$(npm --version)" \
             || { echo "::error::npm $(npm --version) is older than 11.5.1, which trusted publishing needs"; exit 1; }
+      - name: GitHub OIDC token is available
+        # Prints the claims npm matches against the trusted publisher, never the token.
+        run: |
+          [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || { echo "::error::no OIDC token for this job; check id-token: write"; exit 1; }
+          node -e '
+            const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL + "&audience=npm:registry.npmjs.org";
+            fetch(url, { headers: { Authorization: "Bearer " + process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN } })
+              .then((r) => r.json())
+              .then(({ value }) => {
+                const c = JSON.parse(Buffer.from(value.split(".")[1], "base64url").toString());
+                for (const k of ["sub", "repository", "repository_owner", "workflow_ref", "job_workflow_ref", "environment", "ref", "aud"]) console.log(k + ": " + c[k]);
+              })
+              .catch((e) => { console.error(e.message); process.exit(1); });
+          '
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: npm-tarball
@@ -128,7 +142,7 @@ jobs:
         env:
           TARBALL: ${{ needs.verify.outputs.tarball }}
           DIST_TAG: ${{ needs.verify.outputs.dist-tag }}
-        run: npm publish "./$TARBALL" --tag "$DIST_TAG" --access public --ignore-scripts
+        run: npm publish "./$TARBALL" --tag "$DIST_TAG" --access public --ignore-scripts --loglevel verbose
       - name: Published package is the verified tarball
         env:
           TARBALL: ${{ needs.verify.outputs.tarball }}
