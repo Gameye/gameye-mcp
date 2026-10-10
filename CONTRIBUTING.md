@@ -38,11 +38,12 @@ The unit tests mock HTTP and never call a real Gameye API. If you test against a
 
 Releases are cut by maintainers from a version tag on `main`; npm publishing needs no token.
 
-1. Bump `version` in `package.json` (and `package-lock.json`) and add a `CHANGELOG.md` entry, in a pull request.
+1. Bump `version` in `package.json`, `package-lock.json` and `server.json` (the server version, the npm package version and the image tag), and add a `CHANGELOG.md` entry, in a pull request.
 2. After it merges, tag the merge commit `vX.Y.Z` (or `vX.Y.Z-beta.N` for a prerelease) and push the tag.
 3. The `Release` workflow checks the tag is on `main` and matches `package.json`, runs the same checks as CI (tests on Node 22 and 24, typecheck, build, the internal-reference scan and a full-history gitleaks secret scan) plus the stdio smoke test on the packed tarball, and packs the tarball.
 4. A maintainer approves the run in the `release` environment. It then publishes that exact tarball to npm through trusted publishing (GitHub OIDC), with provenance. Prereleases go to the `beta` dist-tag, so `npx -y gameye-mcp` keeps installing the latest stable version.
 5. Before anything publishes, the workflow also builds the container image for amd64 and arm64 and smoke-tests both. After npm, it pushes `ghcr.io/gameye/gameye-mcp`, tagged `X.Y.Z`, `X.Y` and (stable versions only) `latest`.
+6. Finally it lists the version in the MCP Registry from `server.json`, signing in with GitHub OIDC. Keep `server.json`'s versions equal to `package.json`; a unit test checks it.
 
 Version 0.1.0 was published by hand, because npm trusted publishing cannot create a new package; every later version goes through the workflow.
 

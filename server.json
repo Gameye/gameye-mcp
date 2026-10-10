@@ -1,0 +1,59 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Gameye/gameye-mcp",
+  "title": "Gameye",
+  "description": "Launch, inspect and stop multiplayer game server sessions on Gameye from any MCP client.",
+  "repository": {
+    "url": "https://github.com/Gameye/gameye-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://gameye.com",
+  "version": "0.1.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "gameye-mcp",
+      "version": "0.1.3",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "GAMEYE_API_TOKEN",
+          "description": "Gameye API token. Use the least-privileged scopes you need.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "GAMEYE_ENV",
+          "description": "API host: sandbox (self-serve, default) or production (enterprise).",
+          "isRequired": false,
+          "format": "string",
+          "default": "sandbox",
+          "choices": ["sandbox", "production"]
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/gameye/gameye-mcp:0.1.3",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "GAMEYE_API_TOKEN",
+          "description": "Gameye API token. Use the least-privileged scopes you need.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "GAMEYE_ENV",
+          "description": "API host: sandbox (self-serve, default) or production (enterprise).",
+          "isRequired": false,
+          "format": "string",
+          "default": "sandbox",
+          "choices": ["sandbox", "production"]
+        }
+      ]
+    }
+  ]
+}
