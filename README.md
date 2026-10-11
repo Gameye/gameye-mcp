@@ -185,6 +185,14 @@ npm run build
 
 `spec/client.yaml` is a snapshot of the public sandbox `/openapi.yaml`, and `spec/overrides.yaml` holds the MCP tool name for each operation: the `tools:` map from [gameye-skills](https://github.com/gameye/gameye-skills)' `spec/overrides.yaml`, reduced by `scripts/reduce-overrides.mjs` (gameye-skills keeps the full file, which records where the server differs from the spec). Refresh both with `npm run sync-spec [path-or-url-to-overrides.yaml]`. `npm run check-spec` exits 1 when either snapshot has drifted.
 
+## About Gameye
+
+[Gameye](https://gameye.com/?utm_source=github&utm_medium=readme&utm_campaign=gameye-mcp) is a managed hosting platform for multiplayer game servers. You bring a container image, and Gameye starts a dedicated server for each match through one API.
+
+- Session API docs: [gameye.com/docs/api-v2](https://gameye.com/docs/api-v2/?utm_source=github&utm_medium=readme&utm_campaign=gameye-mcp)
+- Gameye docs: [gameye.com/docs](https://gameye.com/docs/?utm_source=github&utm_medium=readme&utm_campaign=gameye-mcp)
+- Try it free: [trial.gameye.com](https://trial.gameye.com/?utm_source=github&utm_medium=readme&utm_campaign=gameye-mcp)
+
 ## Security
 
 Please report vulnerabilities privately. See [SECURITY.md](SECURITY.md).
