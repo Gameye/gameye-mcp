@@ -2,7 +2,7 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
-## Unreleased
+## 0.2.0
 
 - `gameye_create_application`, `gameye_edit_application` and `gameye_create_token` are always registered, so an agent can set up a deployment end to end. `GAMEYE_ENABLE_ADMIN_TOOLS` is removed and ignored if set. The token's scopes (`application:write`, `token:write`) decide what the agent can change.
 - `gameye_context` no longer reports an admin-tools line.

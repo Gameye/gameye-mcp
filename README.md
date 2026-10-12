@@ -63,7 +63,7 @@ Most clients (Claude Desktop, Cursor, Windsurf and others) accept an `mcpServers
 
 Restart the client after you change its configuration.
 
-`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.1.3` (or `"args": ["-y", "gameye-mcp@0.1.3"]`).
+`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.2.0` (or `"args": ["-y", "gameye-mcp@0.2.0"]`).
 
 ### Docker
 
@@ -88,7 +88,7 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 
 - Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
 - Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
-- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.3`.
+- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.2.0`.
 - Files the server writes stay inside the container, and `--rm` deletes them:
   - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
   - `gameye_create_token` writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
