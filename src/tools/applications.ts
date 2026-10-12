@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GameyeClient } from "../client.js";
 import { formatDryRun } from "../guards.js";
 import type { Application, PortBinding, Resources } from "../types.js";
-import { defineTool, dryRunInput, type RegisterOptions, type ServerContext } from "./common.js";
+import { defineTool, dryRunInput, type ServerContext } from "./common.js";
 
 // Nested shapes follow client.yaml: Limits, Reservation and PortBinding.
 
@@ -67,8 +67,7 @@ function formatApplication(a: Application): string {
 export function registerApplicationTools(
   server: McpServer,
   client: GameyeClient,
-  ctx: ServerContext,
-  opts: RegisterOptions
+  ctx: ServerContext
 ): void {
   // ─── List applications ───────────────────────────────────────────────────────
 
@@ -141,9 +140,7 @@ export function registerApplicationTools(
     },
   );
 
-  if (!opts.admin) return;
-
-  // ─── Create application (admin) ──────────────────────────────────────────────
+  // ─── Create application ──────────────────────────────────────────────────────
 
   defineTool(
     server,
@@ -169,7 +166,7 @@ export function registerApplicationTools(
     }
   );
 
-  // ─── Edit application (admin) ────────────────────────────────────────────────
+  // ─── Edit application ────────────────────────────────────────────────────────
 
   defineTool(
     server,

@@ -8,15 +8,15 @@ let handlers: ReturnType<typeof makeMockServer>["handlers"];
 let configs: ReturnType<typeof makeMockServer>["configs"];
 let client: ReturnType<typeof makeMockClient>;
 
-function register(admin: boolean) {
+function register() {
   client = makeMockClient();
   const mock = makeMockServer();
-  registerApplicationTools(mock.server, client as never, makeContext(), { admin });
+  registerApplicationTools(mock.server, client as never, makeContext());
   handlers = mock.handlers;
   configs = mock.configs;
 }
 
-beforeEach(() => register(true));
+beforeEach(() => register());
 afterEach(() => vi.unstubAllGlobals());
 
 const app = {
@@ -39,16 +39,14 @@ function schemaOf(name: string) {
 // ─── registration ─────────────────────────────────────────────────────────────
 
 describe("application tool registration", () => {
-  it("registers admin tools only when admin is on", () => {
-    register(false);
+  it("registers the read, enable-tag, create and edit tools", () => {
     expect(Object.keys(handlers).sort()).toEqual([
+      "gameye_create_application",
+      "gameye_edit_application",
       "gameye_enable_tag",
       "gameye_list_applications",
       "gameye_list_registry_tags",
     ]);
-    register(true);
-    expect(Object.keys(handlers)).toContain("gameye_create_application");
-    expect(Object.keys(handlers)).toContain("gameye_edit_application");
   });
 
   it("annotates reads read-only and writes not read-only", () => {

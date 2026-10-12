@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AGENT_LABEL_KEY, AGENT_LABEL_VALUE, DEFAULT_SESSION_TTL, DEFAULT_TOKEN_EXPIRY } from "../guards.js";
-import { defineTool, type RegisterOptions, type ServerContext } from "./common.js";
+import { defineTool, type ServerContext } from "./common.js";
 import { BETA_NOTICE } from "../beta.js";
 
-export function registerContextTool(server: McpServer, ctx: ServerContext, opts: RegisterOptions): void {
+export function registerContextTool(server: McpServer, ctx: ServerContext): void {
   defineTool(
     server,
     ctx,
@@ -11,7 +11,7 @@ export function registerContextTool(server: McpServer, ctx: ServerContext, opts:
     {
       title: "Server context",
       description:
-        "Show which Gameye environment and host this server targets, the server version, whether admin tools are enabled, and the guardrail defaults. The environment is fixed when the server starts (GAMEYE_ENV / GAMEYE_API_URL) and cannot be changed by a tool call.",
+        "Show which Gameye environment and host this server targets, the server version and the guardrail defaults. The environment is fixed when the server starts (GAMEYE_ENV / GAMEYE_API_URL) and cannot be changed by a tool call.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -22,7 +22,6 @@ export function registerContextTool(server: McpServer, ctx: ServerContext, opts:
         `Host:           ${ctx.host}`,
         `Base URL:       ${ctx.baseUrl}`,
         `Server version: gameye-mcp ${ctx.version}`,
-        `Admin tools:    ${opts.admin ? "enabled" : "disabled (set GAMEYE_ENABLE_ADMIN_TOOLS=1 to enable)"}`,
         "",
         "Guardrail defaults:",
         `  Session TTL:   ${DEFAULT_SESSION_TTL} when a launch gives no ttl`,

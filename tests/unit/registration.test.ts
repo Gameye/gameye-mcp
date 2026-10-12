@@ -5,14 +5,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { GameyeClient } from "../../src/client.js";
 import { registerAllTools } from "../../src/tools/register.js";
-import { adminToolsEnabled } from "../../src/env.js";
 import { makeContext, TEST_TOKEN } from "./helpers.js";
 
-async function connect(admin = false) {
+async function connect() {
   const server = createServer("0.0.0-test");
   const ctx = makeContext();
   const gameye = new GameyeClient({ token: "t", baseUrl: ctx.baseUrl });
-  registerAllTools(server, gameye, ctx, { admin });
+  registerAllTools(server, gameye, ctx);
   const [a, b] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(a), client.connect(b)]);
@@ -36,7 +35,10 @@ describe("registration through the real MCP SDK", () => {
     expect(tools.map((t) => t.name).sort()).toEqual([
       "gameye_check_tag",
       "gameye_context",
+      "gameye_create_application",
+      "gameye_create_token",
       "gameye_describe_session",
+      "gameye_edit_application",
       "gameye_enable_tag",
       "gameye_get_artifacts",
       "gameye_get_locations",
@@ -60,26 +62,14 @@ describe("registration through the real MCP SDK", () => {
     expect(stop?.annotations?.destructiveHint).toBe(true);
   });
 
-  it("adds the admin tools only when admin tools are enabled", async () => {
-    const admin = ["gameye_create_application", "gameye_create_token", "gameye_edit_application"];
-    const off = (await (await connect(false)).listTools()).tools.map((t) => t.name);
-    for (const name of admin) expect(off, name).not.toContain(name);
-    const on = await (await connect(true)).listTools();
-    for (const name of admin) {
-      const tool = on.tools.find((t) => t.name === name);
+  it("registers the application and token tools without any opt-in", async () => {
+    const { tools } = await (await connect()).listTools();
+    for (const name of ["gameye_create_application", "gameye_create_token", "gameye_edit_application"]) {
+      const tool = tools.find((t) => t.name === name);
       expect(tool, name).toBeDefined();
       expect(tool?.annotations?.readOnlyHint, name).toBe(false);
       expect(tool?.annotations?.openWorldHint, name).toBe(true);
     }
-    expect(on.tools).toHaveLength(off.length + admin.length);
-  });
-
-  it("enables admin tools only for GAMEYE_ENABLE_ADMIN_TOOLS=1", () => {
-    expect(adminToolsEnabled({})).toBe(false);
-    expect(adminToolsEnabled({ GAMEYE_ENABLE_ADMIN_TOOLS: "" })).toBe(false);
-    expect(adminToolsEnabled({ GAMEYE_ENABLE_ADMIN_TOOLS: "0" })).toBe(false);
-    expect(adminToolsEnabled({ GAMEYE_ENABLE_ADMIN_TOOLS: "true" })).toBe(false);
-    expect(adminToolsEnabled({ GAMEYE_ENABLE_ADMIN_TOOLS: "1" })).toBe(true);
   });
 
   it("calls a tool end to end and prefixes the result", async () => {
@@ -123,7 +113,7 @@ describe("token masking on every tool result", () => {
     const gameye = new GameyeClient({ token: TEST_TOKEN, baseUrl: makeContext().baseUrl });
     // Wired as in src/index.ts: the context gets a mask function, never the token.
     const ctx = makeContext({ mask: (text: string) => gameye.maskToken(text) });
-    registerAllTools(server, gameye, ctx, { admin: false });
+    registerAllTools(server, gameye, ctx);
     const [a, b] = InMemoryTransport.createLinkedPair();
     const client = new Client({ name: "test", version: "0" });
     await Promise.all([server.connect(a), client.connect(b)]);

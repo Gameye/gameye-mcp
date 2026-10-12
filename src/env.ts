@@ -157,12 +157,3 @@ export function loadConfigOrExit(env: Record<string, string | undefined> = proce
 export function resultPrefix(config: { environment: EnvironmentLabel; host: string }): string {
   return `[${config.environment} · ${config.host}]`;
 }
-
-/**
- * Admin tools (create/edit application, create token) register only when
- * GAMEYE_ENABLE_ADMIN_TOOLS is exactly `1`, so credential- and config-changing
- * tools are invisible unless the operator opts in.
- */
-export function adminToolsEnabled(env: Record<string, string | undefined>): boolean {
-  return env.GAMEYE_ENABLE_ADMIN_TOOLS?.trim() === "1";
-}

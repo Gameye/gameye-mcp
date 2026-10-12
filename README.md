@@ -30,7 +30,6 @@ The environment is a property of the server process. No tool takes an environmen
 | `GAMEYE_API_TOKEN` | **Yes** | — | Gameye API token. Use the least-privileged scopes you need (see below). |
 | `GAMEYE_ENV` | No | `sandbox` | `sandbox` or `production`. Selects the API host. |
 | `GAMEYE_API_URL` | No | — | Overrides the host, for testing only. Must be `https`. If it equals one of the two known hosts, it must match `GAMEYE_ENV` or the server refuses to start. Any other URL is labelled `custom` in every tool result. |
-| `GAMEYE_ENABLE_ADMIN_TOOLS` | No | unset | Set to `1` to register the admin tools (create or edit applications, create tokens). They stay off when this is unset. |
 | `GAMEYE_TIMEOUT_MS` | No | `30000` | Per-request timeout in milliseconds, a positive whole number. Log snapshots get at least 60 s and artifact downloads at least 120 s. A request that runs out of time comes back as a tool error: `Request to <host> timed out after <n>s`. |
 
 ## Install
@@ -92,7 +91,7 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 - To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.1.3`.
 - Files the server writes stay inside the container, and `--rm` deletes them:
   - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
-  - `gameye_create_token` (admin tools only) writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
+  - `gameye_create_token` writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
   - The server runs as uid 1000, so on Linux the mounted directory must be writable by that user.
 
 ## Token scopes
@@ -103,7 +102,8 @@ Give the server a token with only the scopes it needs.
 |---|---|---|
 | Observer | `session:read` `logs:read` `artifact:read` `regions:read` `region:read` `application:read` | Inspect sessions, logs, artifacts, regions and applications. No changes. |
 | Operator | Observer + `session:start` `session:stop` `session:write` | Also launch and stop sessions and update session state. |
-| Admin tools | Operator + `application:write` `token:write` | Also create or edit applications and create tokens. Requires `GAMEYE_ENABLE_ADMIN_TOOLS=1`. |
+| Deployer | Operator + `application:write` | Also create and edit applications, so the agent can set up a deployment end to end. |
+| Token admin | Deployer + `token:write` | Also create API tokens. |
 
 **Never pass your Gameye API token into a game server's environment.** A game server doesn't need it, and anything inside the container can read it.
 
@@ -113,7 +113,7 @@ Every tool result starts with the environment and host it used, for example `[sa
 
 | Tool | Kind | Description |
 |---|---|---|
-| `gameye_context` | read | Show the environment, host and server version this server targets, whether admin tools are enabled, and the guardrail defaults (session TTL, `launched-by` label, token expiry) |
+| `gameye_context` | read | Show the environment, host and server version this server targets, and the guardrail defaults (session TTL, `launched-by` label, token expiry) |
 | `gameye_launch_session` | write, `dryRun` | Start a containerized game server (billable). Default TTL and agent label applied; see [Guardrails](#guardrails) |
 | `gameye_list_sessions` | read | List running sessions (filterable; `all=true` for every status) |
 | `gameye_describe_session` | read | Get session details, ports and players |
@@ -128,9 +128,9 @@ Every tool result starts with the environment and host it used, for example `[sa
 | `gameye_enable_tag` | write, `dryRun` | Enable an image tag for an application so Gameye preloads it |
 | `gameye_get_logs` | read | Fetch session logs |
 | `gameye_get_artifacts` | read | Download a file or directory from a session container as a tar archive |
-| `gameye_create_application` | admin, `dryRun` | Create an application. Only with `GAMEYE_ENABLE_ADMIN_TOOLS=1` |
-| `gameye_edit_application` | admin, destructive, `dryRun` | Change an application; omitted fields stay unchanged. Only with `GAMEYE_ENABLE_ADMIN_TOOLS=1` |
-| `gameye_create_token` | admin, `dryRun` | Create an API token and write it to a file. Only with `GAMEYE_ENABLE_ADMIN_TOOLS=1` |
+| `gameye_create_application` | write, `dryRun` | Create an application |
+| `gameye_edit_application` | destructive, `dryRun` | Change an application; omitted fields stay unchanged |
+| `gameye_create_token` | write, `dryRun` | Create an API token and write it to a file |
 
 Every tool carries MCP annotations: read tools set `readOnlyHint`, `gameye_stop_session` and `gameye_edit_application` set `destructiveHint`, and every tool that calls the Gameye API sets `openWorldHint`.
 
@@ -140,7 +140,7 @@ The tool set covers every operation in the Gameye client API. `tests/parity.test
 
 These behave the same on sandbox and production, because sandbox runs live matches for self-serve customers.
 
-- **Dry run.** `gameye_launch_session`, `gameye_stop_session`, `gameye_enable_tag` and the admin tools accept `dryRun: true`. The tool returns the exact request (method, host, path and body) with the API token masked, and sends nothing.
+- **Dry run.** `gameye_launch_session`, `gameye_stop_session`, `gameye_enable_tag` and the application and token tools accept `dryRun: true`. The tool returns the exact request (method, host, path and body) with the API token masked, and sends nothing.
 - **Bounded sessions.** A launch without `ttl` gets a `30m` TTL, and the result says the default was applied. Every launch sends the label `launched-by: gameye-mcp`, replacing any `launched-by` value the caller passes, so agent-launched sessions can be found with `gameye_list_sessions` and `filter: { "launched-by": "gameye-mcp" }`. When a warm pool serves the image and region, the Gameye API ignores request labels (and env and args), so warm-pool sessions do not carry this label.
 - **No token in game servers.** A launch is refused, with nothing sent, if any env value or name, arg, or label key or value contains this server's Gameye API token. Env values are never shown in results.
 - **No token in results.** Every tool result, including errors, has this server's API token replaced with `***`, in case log output, labels or an error message echo it.
@@ -150,9 +150,9 @@ These behave the same on sandbox and production, because sandbox runs live match
 
 Every request to the Gameye API sends `User-Agent: gameye-mcp/<version>`, plus the MCP client's name once it has connected, e.g. `gameye-mcp/0.1.0 (claude-code)`, so Gameye can count MCP usage. Only this server's version and the client name are sent, nothing else: no token, env values, paths or other data. There is no other telemetry.
 
-## Admin tools
+## Application and token tools
 
-`gameye_create_application`, `gameye_edit_application` and `gameye_create_token` are registered only when the server starts with `GAMEYE_ENABLE_ADMIN_TOOLS=1`. Without it, they don't appear in the tool list at all. They need a token with `application:write` or `token:write`.
+`gameye_create_application`, `gameye_edit_application` and `gameye_create_token` are always registered. What the agent can actually do is set by the token's scopes: they need `application:write` or `token:write`, and a token without them gets a 403 naming the missing scope. To keep an agent from changing applications or minting tokens, give it a token without those scopes.
 
 `gameye_create_token` never returns the new token. It writes the token to the file you name in `outputPath` and returns only the path, the scopes and the expiry:
 

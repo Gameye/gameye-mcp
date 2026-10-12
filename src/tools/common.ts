@@ -11,12 +11,6 @@ export const dryRunInput = z
   .optional()
   .describe("Return the exact request that would be sent, with the API token masked, and send nothing");
 
-/** Tool registration options. Admin tools only when GAMEYE_ENABLE_ADMIN_TOOLS=1. */
-export interface RegisterOptions {
-  /** Register admin tools (create/edit application, create token). */
-  admin: boolean;
-}
-
 /** What every tool needs to know about the server it runs in. Never holds the token. */
 export interface ServerContext {
   environment: EnvironmentLabel;

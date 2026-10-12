@@ -2,6 +2,11 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## Unreleased
+
+- `gameye_create_application`, `gameye_edit_application` and `gameye_create_token` are always registered, so an agent can set up a deployment end to end. `GAMEYE_ENABLE_ADMIN_TOOLS` is removed and ignored if set. The token's scopes (`application:write`, `token:write`) decide what the agent can change.
+- `gameye_context` no longer reports an admin-tools line.
+
 ## 0.1.3
 
 - Listed in the official MCP Registry as `io.github.Gameye/gameye-mcp`. The registry name is case-sensitive and must match the GitHub owner, so `mcpName` and the image's `io.modelcontextprotocol.server.name` label change from `io.github.gameye/…` to `io.github.Gameye/…`.
