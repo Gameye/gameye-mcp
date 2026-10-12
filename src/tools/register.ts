@@ -11,6 +11,7 @@ import { registerApplicationTools } from "./applications.js";
 import { registerTokenTools } from "./tokens.js";
 import { registerLogTools } from "./logs.js";
 import { registerArtifactTools } from "./artifacts.js";
+import { registerSkillsTools } from "./skills.js";
 
 /** Register every tool. */
 export function registerAllTools(
@@ -28,4 +29,5 @@ export function registerAllTools(
   registerLogTools(server, client, ctx);
   registerArtifactTools(server, client, ctx);
   registerTokenTools(server, client, ctx);
+  registerSkillsTools(server, ctx);
 }

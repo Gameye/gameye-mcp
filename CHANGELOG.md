@@ -2,6 +2,10 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## Unreleased
+
+- New `gameye_update_skills`: compares the installed Gameye skills (skills CLI, user-wide or project, and the Claude Code plugin) with the latest pack on GitHub, and with `apply: true` updates them through the skills CLI or `claude plugin update`. It only touches skills installed from `gameye/gameye-skills`.
+
 ## 0.2.0
 
 - `gameye_create_application`, `gameye_edit_application` and `gameye_create_token` are always registered, so an agent can set up a deployment end to end. `GAMEYE_ENABLE_ADMIN_TOOLS` is removed and ignored if set. The token's scopes (`application:write`, `token:write`) decide what the agent can change.

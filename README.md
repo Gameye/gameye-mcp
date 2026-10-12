@@ -131,6 +131,7 @@ Every tool result starts with the environment and host it used, for example `[sa
 | `gameye_create_application` | write, `dryRun` | Create an application |
 | `gameye_edit_application` | destructive, `dryRun` | Change an application; omitted fields stay unchanged |
 | `gameye_create_token` | write, `dryRun` | Create an API token and write it to a file |
+| `gameye_update_skills` | read, or write with `apply` | Compare the installed [Gameye skills](https://github.com/gameye/gameye-skills) with the latest pack, and update them with `apply: true`. See [Keeping the skills current](#keeping-the-skills-current) |
 
 Every tool carries MCP annotations: read tools set `readOnlyHint`, `gameye_stop_session` and `gameye_edit_application` set `destructiveHint`, and every tool that calls the Gameye API sets `openWorldHint`.
 
@@ -145,6 +146,16 @@ These behave the same on sandbox and production, because sandbox runs live match
 - **No token in game servers.** A launch is refused, with nothing sent, if any env value or name, arg, or label key or value contains this server's Gameye API token. Env values are never shown in results.
 - **No token in results.** Every tool result, including errors, has this server's API token replaced with `***`, in case log output, labels or an error message echo it.
 - **Explicit stops.** `gameye_stop_session` stops exactly one session by its exact ID. There is no bulk stop, and empty, wildcard or list IDs are refused.
+
+## Keeping the skills current
+
+The [Gameye skills](https://github.com/gameye/gameye-skills) change as the Gameye API does. `gameye_update_skills` reads the latest pack version from the `gameye` skill on GitHub (`Pack version:` in `skills/gameye/SKILL.md` on `main`) and compares it with what is installed:
+
+- **skills CLI, user-wide:** skills recorded in `~/.agents/.skill-lock.json` with source `gameye/gameye-skills`.
+- **skills CLI, this project:** the same, in `skills-lock.json` in the server's working directory.
+- **Claude Code plugin:** `gameye@gameye` in `~/.claude/plugins/installed_plugins.json`.
+
+Without `apply` it only reports. With `apply: true` it runs each outdated install's own updater: `npx -y skills update <the Gameye skills> -g -y` (or `-p -y`), or `claude plugin marketplace update gameye` then `claude plugin update gameye@gameye`. It never updates skills from other sources, and it never downloads or follows skill text itself. The running agent session keeps the skills it loaded; the next session uses the update. The `gameye` skill tells agents to run the check once per conversation and ask before applying.
 
 ## Telemetry/attribution
 

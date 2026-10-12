@@ -51,6 +51,7 @@ describe("registration through the real MCP SDK", () => {
       "gameye_player_join",
       "gameye_player_leave",
       "gameye_stop_session",
+      "gameye_update_skills",
     ]);
     for (const t of tools) {
       expect(t.annotations, t.name).toBeDefined();
