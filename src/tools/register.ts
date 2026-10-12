@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { GameyeClient } from "../client.js";
-import type { RegisterOptions, ServerContext } from "./common.js";
+import type { ServerContext } from "./common.js";
 import { registerContextTool } from "./context.js";
 import { registerSessionTools } from "./sessions.js";
 import { registerPlayerTools } from "./players.js";
@@ -12,23 +12,20 @@ import { registerTokenTools } from "./tokens.js";
 import { registerLogTools } from "./logs.js";
 import { registerArtifactTools } from "./artifacts.js";
 
-export type { RegisterOptions };
-
-/** Register every tool. Admin tools only when `opts.admin` is true. */
+/** Register every tool. */
 export function registerAllTools(
   server: McpServer,
   client: GameyeClient,
-  ctx: ServerContext,
-  opts: RegisterOptions
+  ctx: ServerContext
 ): void {
-  registerContextTool(server, ctx, opts);
+  registerContextTool(server, ctx);
   registerSessionTools(server, client, ctx);
   registerPlayerTools(server, client, ctx);
   registerLocationTools(server, client, ctx);
   registerRegionTools(server, client, ctx);
   registerTagTools(server, client, ctx);
-  registerApplicationTools(server, client, ctx, opts);
+  registerApplicationTools(server, client, ctx);
   registerLogTools(server, client, ctx);
   registerArtifactTools(server, client, ctx);
-  if (opts.admin) registerTokenTools(server, client, ctx);
+  registerTokenTools(server, client, ctx);
 }

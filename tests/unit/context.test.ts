@@ -3,16 +3,16 @@ import { registerContextTool } from "../../src/tools/context.js";
 import { makeMockServer, makeContext, getText } from "./helpers.js";
 import { BETA_NOTICE } from "../../src/beta.js";
 
-async function contextText(admin: boolean): Promise<string> {
+async function contextText(): Promise<string> {
   const mock = makeMockServer();
-  registerContextTool(mock.server, makeContext(), { admin });
+  registerContextTool(mock.server, makeContext());
   return getText(await mock.handlers["gameye_context"]({}));
 }
 
 describe("gameye_context", () => {
   it("reports environment, host, version and the scope note, read-only", async () => {
     const mock = makeMockServer();
-    registerContextTool(mock.server, makeContext({ version: "1.2.3" }), { admin: false });
+    registerContextTool(mock.server, makeContext({ version: "1.2.3" }));
     const result = await mock.handlers["gameye_context"]({});
     const text = getText(result);
     expect(text.split("\n")[0]).toBe("[sandbox · api.sandbox-gameye.gameye.net]");
@@ -26,7 +26,7 @@ describe("gameye_context", () => {
 
   it("labels a custom URL", async () => {
     const mock = makeMockServer();
-    registerContextTool(mock.server, makeContext({ environment: "custom", host: "gw.example.test", baseUrl: "https://gw.example.test" }), { admin: false });
+    registerContextTool(mock.server, makeContext({ environment: "custom", host: "gw.example.test", baseUrl: "https://gw.example.test" }));
     const text = getText(await mock.handlers["gameye_context"]({}));
     expect(text.split("\n")[0]).toBe("[custom · gw.example.test]");
     expect(text).toContain("non-standard GAMEYE_API_URL");
@@ -34,23 +34,17 @@ describe("gameye_context", () => {
 
   it("production prefix", async () => {
     const mock = makeMockServer();
-    registerContextTool(mock.server, makeContext({ environment: "production", host: "api.production-gameye.gameye.net" }), { admin: false });
+    registerContextTool(mock.server, makeContext({ environment: "production", host: "api.production-gameye.gameye.net" }));
     const text = getText(await mock.handlers["gameye_context"]({}));
     expect(text.split("\n")[0]).toBe("[production · api.production-gameye.gameye.net]");
   });
 
-  it("says admin tools are disabled and how to enable them", async () => {
-    expect(await contextText(false)).toContain("Admin tools:    disabled (set GAMEYE_ENABLE_ADMIN_TOOLS=1 to enable)");
-  });
-
-  it("says admin tools are enabled", async () => {
-    const text = await contextText(true);
-    expect(text).toMatch(/^Admin tools:    enabled$/m);
-    expect(text).not.toContain("set GAMEYE_ENABLE_ADMIN_TOOLS=1");
+  it("has no admin-tools line", async () => {
+    expect(await contextText()).not.toMatch(/admin tools/i);
   });
 
   it("reports the guardrail defaults", async () => {
-    const text = await contextText(false);
+    const text = await contextText();
     expect(text).toContain("Guardrail defaults:");
     expect(text).toMatch(/Session TTL:\s+30m when a launch gives no ttl/);
     expect(text).toMatch(/Session label:\s+launched-by=gameye-mcp on every launch/);

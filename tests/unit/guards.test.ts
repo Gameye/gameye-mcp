@@ -38,7 +38,7 @@ function setup(ctx: ServerContext = makeContext(), body: unknown = { id: "s-1", 
   vi.stubGlobal("fetch", fetchMock);
   const mock = makeMockServer();
   const client = new GameyeClient({ token: TEST_TOKEN, baseUrl: ctx.baseUrl });
-  registerAllTools(mock.server, client, ctx, { admin: true });
+  registerAllTools(mock.server, client, ctx);
   const call = (name: string, args: Record<string, unknown>): Promise<ToolResult> => mock.handlers[name](args);
   return { fetchMock, call };
 }
@@ -207,9 +207,9 @@ describe("stop requires one explicit session ID", () => {
   });
 });
 
-// ─── enable tag and admin writes: dry run ─────────────────────────────────────
+// ─── enable tag and application and token writes: dry run ─────────────────────
 
-describe("dryRun on enable-tag and admin writes sends nothing", () => {
+describe("dryRun on enable-tag, application and token writes sends nothing", () => {
   const app = {
     name: "my-game",
     registry: "dockerhub",

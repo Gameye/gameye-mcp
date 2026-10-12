@@ -4,7 +4,6 @@ import { GameyeClient } from "../client.js";
 import { DEFAULT_TOKEN_EXPIRY, GuardError, checkTokenOutputPath, formatDryRun, reserveTokenFile } from "../guards.js";
 import { defineTool, type ServerContext } from "./common.js";
 
-/** Admin tool. Register only when GAMEYE_ENABLE_ADMIN_TOOLS=1. */
 export function registerTokenTools(server: McpServer, client: GameyeClient, ctx: ServerContext): void {
   defineTool(
     server,

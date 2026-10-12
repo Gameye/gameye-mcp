@@ -25,7 +25,6 @@ function specOperationIds(): string[] {
 
 interface ToolMapping {
   tool: string;
-  adminGated: boolean;
 }
 
 function overridesToolMap(): Record<string, ToolMapping> {
@@ -36,16 +35,16 @@ function overridesToolMap(): Record<string, ToolMapping> {
   for (const line of lines.slice(start + 1)) {
     if (/^\S/.test(line)) break; // next top-level key
     const m = /^\s+([\w-]+):\s*\{\s*tool:\s*([\w]+)\s*(?:,\s*admin_gated:\s*(true|false)\s*)?\}\s*$/.exec(line);
-    if (m) out[m[1]] = { tool: m[2], adminGated: m[3] === "true" };
+    if (m) out[m[1]] = { tool: m[2] };
     else if (line.trim() && !line.trim().startsWith("#")) throw new Error(`Unparsed tools: line: ${line}`);
   }
   return out;
 }
 
-function registeredTools(admin: boolean): string[] {
+function registeredTools(): string[] {
   const mock = makeMockServer();
   const ctx = makeContext();
-  registerAllTools(mock.server, new GameyeClient({ token: "t", baseUrl: ctx.baseUrl }), ctx, { admin });
+  registerAllTools(mock.server, new GameyeClient({ token: "t", baseUrl: ctx.baseUrl }), ctx);
   return Object.keys(mock.handlers);
 }
 
@@ -74,8 +73,8 @@ describe("MCP tool parity with the vendored client spec", () => {
     expect(new Set(operations).size).toBe(17);
   });
 
-  it("every operation maps to a registered tool (admin tools enabled)", () => {
-    expect(parityProblems(operations, map, registeredTools(true))).toEqual([]);
+  it("every operation maps to a registered tool", () => {
+    expect(parityProblems(operations, map, registeredTools())).toEqual([]);
   });
 
   it("every exclusion has a reason and names a real operation", () => {
@@ -87,21 +86,12 @@ describe("MCP tool parity with the vendored client spec", () => {
 
   it("every registered tool is either mapped to an operation or a known non-API tool", () => {
     const mapped = new Set(Object.values(map).map((m) => m.tool));
-    const extra = registeredTools(true).filter((t) => !mapped.has(t) && !NON_API_TOOLS.has(t));
+    const extra = registeredTools().filter((t) => !mapped.has(t) && !NON_API_TOOLS.has(t));
     expect(extra).toEqual([]);
   });
 
-  it("admin-gated tools are registered only with admin tools enabled", () => {
-    const off = new Set(registeredTools(false));
-    const on = new Set(registeredTools(true));
-    for (const [op, m] of Object.entries(map)) {
-      expect(on.has(m.tool), `${op} -> ${m.tool} with admin`).toBe(true);
-      expect(off.has(m.tool), `${op} -> ${m.tool} without admin`).toBe(!m.adminGated);
-    }
-  });
-
   it("fails, naming the operation, when a tool registration is removed", () => {
-    const registered = registeredTools(true).filter((t) => t !== "gameye_list_regions");
+    const registered = registeredTools().filter((t) => t !== "gameye_list_regions");
     expect(parityProblems(operations, map, registered)).toEqual([
       "operation list-regions: tool gameye_list_regions is not registered and has no exclusion",
     ]);

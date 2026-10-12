@@ -35,7 +35,6 @@ function nonEmptyLines(text: string): string[] {
 function run(messages: object[], token: string | undefined, timeoutMs = 30_000): Promise<Run> {
   const env = { ...process.env };
   delete env.GAMEYE_API_TOKEN;
-  delete env.GAMEYE_ENABLE_ADMIN_TOOLS;
   if (token !== undefined) env.GAMEYE_API_TOKEN = token;
   const expectedReplies = messages.filter((m) => "id" in m).length;
   return new Promise((resolve, reject) => {
@@ -79,7 +78,7 @@ const handshake = [
 function registeredToolNames(): string[] {
   const mock = makeMockServer();
   const ctx = makeContext();
-  registerAllTools(mock.server, new GameyeClient({ token: "t", baseUrl: ctx.baseUrl }), ctx, { admin: false });
+  registerAllTools(mock.server, new GameyeClient({ token: "t", baseUrl: ctx.baseUrl }), ctx);
   return Object.keys(mock.handlers).sort();
 }
 
