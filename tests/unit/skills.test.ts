@@ -4,7 +4,7 @@ import { registerSkillsTools } from "../../src/tools/skills.js";
 import { compareVersions, LATEST_PACK_URL, parsePackVersion, stripAnsi, type SkillsEnv } from "../../src/skills.js";
 import { makeMockServer, makeContext, getText } from "./helpers.js";
 
-const HOME = "/home/dev";
+const HOME = join("/", "u", "tester");
 const CWD = "/work/game";
 const skill = (v: string) => `---\nname: gameye\n---\n\n# Gameye\n\nPack version: ${v}\n`;
 const lock = (skills: Record<string, string>) =>
