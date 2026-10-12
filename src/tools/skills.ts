@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { defineTool, type ServerContext } from "./common.js";
 import {
+  compareVersions,
   defaultSkillsEnv,
   describeInstall,
   fetchLatestPackVersion,
@@ -41,14 +42,25 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ apply, installedVersion }) => {
-      const [latest, installs] = await Promise.all([fetchLatestPackVersion(env), findSkillsInstalls(env)]);
+      const installs = await findSkillsInstalls(env);
+      let latest: string;
+      try {
+        latest = await fetchLatestPackVersion(env);
+      } catch (err) {
+        const lines = [
+          `Could not read the latest Gameye skills pack version from GitHub: ${err instanceof Error ? err.message : String(err)}`,
+          "Nothing was updated.",
+        ];
+        for (const install of installs) lines.push(`• ${describeInstall(install)}`);
+        return { text: lines.join("\n"), isError: true };
+      }
       const lines = [`Latest Gameye skills pack: ${latest}`];
 
       if (installs.length === 0) {
         lines.push("No skills CLI or Claude Code plugin install of the Gameye skills was found.");
         if (installedVersion) {
           lines.push(`The loaded gameye skill reports pack ${installedVersion}.`);
-          if (installedVersion !== latest) {
+          if (compareVersions(installedVersion, latest) < 0) {
             lines.push(
               "To update, reinstall the way they were installed: `npx skills add gameye/gameye-skills --skill \"*\"` (add -g for user-wide), " +
                 "`/plugin marketplace update gameye` for the Claude Code plugin, or copy the skills directories again."
@@ -64,11 +76,10 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
       }
       if (outdated.length === 0) return lines.join("\n");
 
-      if (!apply) {
-        lines.push("", "Call again with apply=true to run:");
-        for (const install of outdated) {
-          for (const cmd of updateCommands(install)) lines.push(`  ${cmd.join(" ")}`);
-        }
+      const commands = outdated.flatMap(updateCommands);
+      if (!apply || env.platform === "win32") {
+        lines.push("", apply ? "Updating from this server isn't supported on Windows. Run:" : "Call again with apply=true to run:");
+        for (const cmd of commands) lines.push(`  ${cmd.join(" ")}`);
         return lines.join("\n");
       }
 
@@ -89,7 +100,11 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
 
       const after = await findSkillsInstalls(env);
       lines.push("", "After updating:");
-      for (const install of after) lines.push(`• ${describeInstall(install)}`);
+      for (const install of after) {
+        const behind = isOutdated(install, latest);
+        failed ||= behind;
+        lines.push(`• ${describeInstall(install)}${behind ? " (still behind)" : ""}`);
+      }
       lines.push("", RELOAD_NOTE);
       return { text: lines.join("\n"), isError: failed };
     }

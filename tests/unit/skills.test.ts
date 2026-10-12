@@ -10,20 +10,23 @@ const skill = (v: string) => `---\nname: gameye\n---\n\n# Gameye\n\nPack version
 const lock = (skills: Record<string, string>) =>
   JSON.stringify({ version: 3, skills: Object.fromEntries(Object.entries(skills).map(([n, source]) => [n, { source }])) });
 
-function setup(files: Record<string, string>, latest = "1.5.0", runFails = false) {
+function setup(files: Record<string, string>, latest = "1.5.0", opts: { runFails?: boolean; runNoop?: boolean; fetchFails?: boolean; platform?: NodeJS.Platform } = {}) {
   const disk = { ...files };
   const ran: string[] = [];
   const env: SkillsEnv = {
     home: HOME,
     cwd: CWD,
+    platform: opts.platform ?? "linux",
     readText: async (p) => disk[p],
     fetchText: async (url) => {
       expect(url).toBe(LATEST_PACK_URL);
+      if (opts.fetchFails) throw new Error("GET failed: 503");
       return skill(latest);
     },
     run: async (cmd, args) => {
       ran.push([cmd, ...args].join(" "));
-      if (runFails) throw new Error(`${cmd} failed: exit 1`);
+      if (opts.runFails) throw new Error(`${cmd} failed: exit 1`);
+      if (opts.runNoop) return "nothing to update";
       for (const p of Object.keys(disk)) if (p.endsWith(join("gameye", "SKILL.md"))) disk[p] = skill(latest);
       return "updated";
     },
@@ -98,7 +101,7 @@ describe("gameye_update_skills", () => {
   });
 
   it("reports a failed update as an error and keeps the command output", async () => {
-    const { call } = setup(globalInstall, "1.5.0", true);
+    const { call } = setup(globalInstall, "1.5.0", { runFails: true });
     const res = await call({ apply: true });
     expect(res.isError).toBe(true);
     expect(getText(res)).toContain("Failed: npx failed: exit 1");
@@ -121,5 +124,60 @@ describe("gameye_update_skills", () => {
   it("is a write tool that reaches the network", () => {
     const { configs } = setup({});
     expect(configs["gameye_update_skills"].annotations).toMatchObject({ readOnlyHint: false, openWorldHint: true });
+  });
+
+  it("never passes a lock-file name that looks like a CLI option", async () => {
+    const { call, ran } = setup({
+      ...globalInstall,
+      [join(HOME, ".agents", ".skill-lock.json")]: lock({ gameye: "gameye/gameye-skills", "--yes-all": "gameye/gameye-skills" }),
+    });
+    await call({ apply: true });
+    expect(ran).toEqual(["npx -y skills update gameye -g -y"]);
+  });
+
+  it("recognises the other ways a lock file names the repository", async () => {
+    const { call } = setup({
+      [join(HOME, ".agents", ".skill-lock.json")]: lock({
+        gameye: "https://github.com/Gameye/gameye-skills.git",
+        "gameye-launch": "git@github.com:gameye/gameye-skills.git",
+        "gameye-troubleshoot": "gameye/gameye-skills/",
+        evil: "evil/gameye-skills",
+      }),
+    });
+    expect(getText(await call())).toContain("npx -y skills update gameye gameye-launch gameye-troubleshoot -g -y");
+  });
+
+  it("reports the installs and updates nothing when GitHub can't be read", async () => {
+    const { call, ran } = setup(globalInstall, "1.5.0", { fetchFails: true });
+    const res = await call({ apply: true });
+    expect(res.isError).toBe(true);
+    expect(getText(res)).toContain("Could not read the latest Gameye skills pack version");
+    expect(getText(res)).toContain("skills CLI, user-wide: pack 1.4.0");
+    expect(ran).toEqual([]);
+  });
+
+  it("flags an install that is still behind after its updater succeeds", async () => {
+    const { call } = setup(globalInstall, "1.5.0", { runNoop: true });
+    const res = await call({ apply: true });
+    expect(res.isError).toBe(true);
+    expect(getText(res)).toContain("pack 1.4.0 (still behind)");
+  });
+
+  it("counts the oldest copy when the skill is in more than one agent folder", async () => {
+    const { call } = setup({ ...globalInstall, [join(HOME, ".claude", "skills", "gameye", "SKILL.md")]: skill("1.2.0") }, "1.4.0");
+    expect(getText(await call())).toContain("pack 1.2.0 (update available)");
+  });
+
+  it("prints the commands instead of running them on Windows", async () => {
+    const { call, ran } = setup(globalInstall, "1.5.0", { platform: "win32" });
+    const text = getText(await call({ apply: true }));
+    expect(text).toContain("isn't supported on Windows");
+    expect(text).toContain("npx -y skills update gameye gameye-launch -g -y");
+    expect(ran).toEqual([]);
+  });
+
+  it("doesn't suggest updating a loaded skill that is already current", async () => {
+    const { call } = setup({}, "1.5.0");
+    expect(getText(await call({ installedVersion: "1.5.0" }))).not.toContain("To update");
   });
 });

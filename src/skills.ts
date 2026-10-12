@@ -7,7 +7,9 @@ import { join } from "node:path";
 export const LATEST_PACK_URL = "https://raw.githubusercontent.com/Gameye/gameye-skills/main/skills/gameye/SKILL.md";
 
 const PACK_VERSION_RE = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m;
-const SKILLS_SOURCE_RE = /^(https:\/\/github\.com\/)?gameye\/gameye-skills(\.git)?$/i;
+const SKILLS_SOURCE_RE = /^(https:\/\/github\.com\/|git@github\.com:|github:)?gameye\/gameye-skills(\.git)?\/?$/i;
+// Lock files can come from a cloned project, so a name must look like a skill name, never a CLI option.
+const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 
 /** How the Gameye skills were installed. Each kind updates differently. */
 export type InstallKind = "skills-cli-global" | "skills-cli-project" | "claude-plugin";
@@ -24,6 +26,7 @@ export interface SkillsInstall {
 export interface SkillsEnv {
   home: string;
   cwd: string;
+  platform: NodeJS.Platform;
   readText: (path: string) => Promise<string | undefined>;
   fetchText: (url: string) => Promise<string>;
   run: (cmd: string, args: string[], cwd: string) => Promise<string>;
@@ -33,6 +36,7 @@ export function defaultSkillsEnv(): SkillsEnv {
   return {
     home: homedir(),
     cwd: process.cwd(),
+    platform: process.platform,
     readText: (path) => readFile(path, "utf8").catch(() => undefined),
     fetchText: async (url) => {
       const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
@@ -41,12 +45,15 @@ export function defaultSkillsEnv(): SkillsEnv {
     },
     run: (cmd, args, cwd) =>
       new Promise((resolve, reject) => {
-        const childEnv = { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" };
-        execFile(cmd, args, { cwd, env: childEnv, timeout: 180_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+        const childEnv = { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0", CI: "1" };
+        const options = { cwd, env: childEnv, timeout: 90_000, killSignal: "SIGKILL" as const, maxBuffer: 4 * 1024 * 1024 };
+        const child = execFile(cmd, args, options, (err, stdout, stderr) => {
           const out = stripAnsi(`${stdout}${stderr}`).trim();
           if (err) reject(new Error(`${cmd} ${args.join(" ")} failed: ${err.message}\n${out}`));
           else resolve(out);
         });
+        // Closed stdin makes a prompting CLI fail at once instead of waiting for the timeout.
+        child.stdin?.end();
       }),
   };
 }
@@ -85,7 +92,7 @@ function parseJson(text: string | undefined): unknown {
 function gameyeSkillsInLock(lockText: string | undefined): string[] {
   const lock = parseJson(lockText) as { skills?: Record<string, { source?: string; sourceUrl?: string }> } | undefined;
   return Object.entries(lock?.skills ?? {})
-    .filter(([, s]) => SKILLS_SOURCE_RE.test(s.source ?? "") || SKILLS_SOURCE_RE.test(s.sourceUrl ?? ""))
+    .filter(([name, s]) => SKILL_NAME_RE.test(name) && (SKILLS_SOURCE_RE.test(s.source ?? "") || SKILLS_SOURCE_RE.test(s.sourceUrl ?? "")))
     .map(([name]) => name)
     .sort();
 }
@@ -94,12 +101,14 @@ function gameyeSkillsInLock(lockText: string | undefined): string[] {
 // and copies straight into the agent's own folder when it installs for one.
 const SKILL_DIRS = [".agents/skills", ".claude/skills", ".codex/skills", ".cursor/skills", ".config/opencode/skills"];
 
+/** The oldest pack version among the copies found, so one stale copy still counts as outdated. */
 async function readInstalledPackVersion(env: SkillsEnv, root: string): Promise<string | undefined> {
+  const versions: string[] = [];
   for (const dir of SKILL_DIRS) {
     const version = parsePackVersion(await env.readText(join(root, dir, "gameye", "SKILL.md")));
-    if (version) return version;
+    if (version) versions.push(version);
   }
-  return undefined;
+  return versions.sort(compareVersions)[0];
 }
 
 async function skillsCliInstall(env: SkillsEnv, kind: InstallKind, lockPath: string, root: string): Promise<SkillsInstall | undefined> {

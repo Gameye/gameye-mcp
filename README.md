@@ -155,7 +155,7 @@ The [Gameye skills](https://github.com/gameye/gameye-skills) change as the Gamey
 - **skills CLI, this project:** the same, in `skills-lock.json` in the server's working directory.
 - **Claude Code plugin:** `gameye@gameye` in `~/.claude/plugins/installed_plugins.json`.
 
-Without `apply` it only reports. With `apply: true` it runs each outdated install's own updater: `npx -y skills update <the Gameye skills> -g -y` (or `-p -y`), or `claude plugin marketplace update gameye` then `claude plugin update gameye@gameye`. It never updates skills from other sources, and it never downloads or follows skill text itself. The running agent session keeps the skills it loaded; the next session uses the update. The `gameye` skill tells agents to run the check once per conversation and ask before applying.
+Without `apply` it only reports. With `apply: true` it runs each outdated install's own updater: `npx -y skills update <the Gameye skills> -g -y` (or `-p -y`), or `claude plugin marketplace update gameye` then `claude plugin update gameye@gameye`. It only updates skills whose lock-file source is `gameye/gameye-skills`, and it never downloads or follows skill text itself. Each command runs with stdin closed and a 90-second limit. On Windows it prints the commands instead of running them. The running agent session keeps the skills it loaded; the next session uses the update. The `gameye` skill tells agents to run the check once per conversation and ask before applying.
 
 ## Telemetry/attribution
 
