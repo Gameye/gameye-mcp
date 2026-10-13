@@ -58,7 +58,10 @@ jobs:
           $sw = [Diagnostics.Stopwatch]::StartNew()
           $out = $init | cmd /c npx -y gameye-mcp@latest 2>&1
           "exit $LASTEXITCODE after $($sw.Elapsed.TotalSeconds) s"
-          $out | Select-Object -First 20
+          $out | Select-Object -First 3
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $out = $init | cmd /c npx -y gameye-mcp@latest 2>&1
+          "second start: exit $LASTEXITCODE after $($sw.Elapsed.TotalSeconds) s"
       - name: Stdio smoke test of the published package through npx
         if: ${{ !cancelled() }}
         env:
