@@ -41,9 +41,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        if: ${{ !cancelled() }}
       - name: Stdio smoke test
+        if: ${{ !cancelled() }}
         run: npm run test:smoke
       - name: Stdio smoke test of the published package through npx
+        if: ${{ !cancelled() }}
         env:
           GAMEYE_MCP_SMOKE_CMD: '["cmd","/c","npx","-y","gameye-mcp@latest"]'
         run: npm run test:smoke
