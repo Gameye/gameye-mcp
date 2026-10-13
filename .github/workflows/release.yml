@@ -144,7 +144,18 @@ jobs:
         env:
           TARBALL: ${{ needs.verify.outputs.tarball }}
           DIST_TAG: ${{ needs.verify.outputs.dist-tag }}
-        run: npm publish "./$TARBALL" --tag "$DIST_TAG" --access public --ignore-scripts --loglevel verbose
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          # A re-run after a timed-out integrity check finds the version already
+          # published; npm refuses to publish it twice, so check before publishing.
+          expected="sha512-$(openssl dgst -sha512 -binary "$TARBALL" | openssl base64 -A)"
+          existing="$(npm view "gameye-mcp@$VERSION" dist.integrity 2>/dev/null || true)"
+          if [ -n "$existing" ]; then
+            [ "$existing" = "$expected" ] || { echo "::error::gameye-mcp@$VERSION is already on npm with integrity $existing, not the verified tarball $expected"; exit 1; }
+            echo "gameye-mcp@$VERSION is already on npm with the verified tarball; skipping publish"
+            exit 0
+          fi
+          npm publish "./$TARBALL" --tag "$DIST_TAG" --access public --ignore-scripts --loglevel verbose
       - name: Published package is the verified tarball
         env:
           TARBALL: ${{ needs.verify.outputs.tarball }}
@@ -152,7 +163,7 @@ jobs:
         run: |
           expected="sha512-$(openssl dgst -sha512 -binary "$TARBALL" | openssl base64 -A)"
           # The registry can take a few minutes to show a new version.
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 90); do
             actual="$(npm view "gameye-mcp@$VERSION" dist.integrity 2>/dev/null || true)"
             [ -n "$actual" ] && break
             sleep 10
