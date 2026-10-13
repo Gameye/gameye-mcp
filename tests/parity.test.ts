@@ -16,7 +16,7 @@ const specDir = fileURLToPath(new URL("../spec/", import.meta.url));
 const EXCLUSIONS: Record<string, string> = {};
 
 /** Tools that intentionally map to no API operation. */
-const NON_API_TOOLS = new Set(["gameye_context"]);
+const NON_API_TOOLS = new Set(["gameye_context", "gameye_update_skills"]);
 
 function specOperationIds(): string[] {
   const text = readFileSync(`${specDir}client.yaml`, "utf8");
