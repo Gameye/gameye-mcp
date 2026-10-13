@@ -1,6 +1,6 @@
 {
   "name": "gameye-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "mcpName": "io.github.Gameye/gameye-mcp",
   "description": "MCP server for the Gameye game server orchestration API: launch and inspect sessions, check image tags, fetch logs and artifacts from any MCP client",
   "main": "dist/index.js",
