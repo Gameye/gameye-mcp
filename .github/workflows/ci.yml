@@ -45,6 +45,9 @@ jobs:
       - name: Stdio smoke test
         if: ${{ !cancelled() }}
         run: npm run test:smoke
+      - name: Download the published package
+        if: ${{ !cancelled() }}
+        run: npm cache add gameye-mcp@latest
       - name: Stdio smoke test of the published package through npx
         if: ${{ !cancelled() }}
         env:
