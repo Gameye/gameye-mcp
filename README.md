@@ -65,6 +65,22 @@ Restart the client after you change its configuration.
 
 `npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.3.0` (or `"args": ["-y", "gameye-mcp@0.3.0"]`).
 
+### Windows
+
+The server runs on Windows with Node.js 22 or newer. Windows testing is behind macOS and Linux, so please [open an issue](https://github.com/Gameye/gameye-mcp/issues) if something breaks.
+
+- Many Windows MCP clients can't start `npx` directly, because it's a `.cmd` script. Start it through `cmd /c` instead:
+
+  ```json
+  "command": "cmd",
+  "args": ["/c", "npx", "-y", "gameye-mcp"]
+  ```
+
+  With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- cmd /c npx -y gameye-mcp`.
+- The first start downloads the package and can take 10 to 40 seconds. Later starts take about a second.
+- `gameye_update_skills` reports outdated skills on Windows but doesn't run the update. It prints the commands for you to run.
+- `gameye_create_token` writes the token file with owner-only permissions on macOS and Linux. On Windows those permissions don't apply, and the file gets the access rules of its folder. Write it inside your user profile.
+
 ### Docker
 
 No Node.js on the machine? Run the published image instead. It works on amd64 and arm64:
