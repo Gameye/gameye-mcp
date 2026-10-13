@@ -3,10 +3,11 @@
 // Driven through node because the scripts are plain .mjs without types.
 
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const script = new URL("../../scripts/reduce-overrides.mjs", import.meta.url).pathname;
+const script = fileURLToPath(new URL("../../scripts/reduce-overrides.mjs", import.meta.url));
 
 function reduce(text: string): string {
   return execFileSync(process.execPath, [script], { input: text, encoding: "utf8" });
