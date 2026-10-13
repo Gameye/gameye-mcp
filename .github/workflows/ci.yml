@@ -48,6 +48,17 @@ jobs:
       - name: Download the published package
         if: ${{ !cancelled() }}
         run: npm cache add gameye-mcp@latest
+      - name: Diagnose npx start
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        env:
+          GAMEYE_API_TOKEN: dummy
+        run: |
+          $init = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}'
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $out = $init | cmd /c npx -y gameye-mcp@latest 2>&1
+          "exit $LASTEXITCODE after $($sw.Elapsed.TotalSeconds) s"
+          $out | Select-Object -First 20
       - name: Stdio smoke test of the published package through npx
         if: ${{ !cancelled() }}
         env:
