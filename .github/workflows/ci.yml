@@ -30,6 +30,24 @@ jobs:
       - name: Check package contents
         run: npm pack --dry-run --json | node scripts/check-pack.mjs
 
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Stdio smoke test
+        run: npm run test:smoke
+      - name: Stdio smoke test of the published package through npx
+        env:
+          GAMEYE_MCP_SMOKE_CMD: '["cmd","/c","npx","-y","gameye-mcp@latest"]'
+        run: npm run test:smoke
+
   docker:
     runs-on: ubuntu-latest
     steps:
