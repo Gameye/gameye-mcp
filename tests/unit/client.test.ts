@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mkdtemp, open, rm } from "node:fs/promises";
-import { basename, dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { GameyeClient, GameyeError, GameyeTimeoutError, REDACTED, safeFileSegment } from "../../src/client.js";
 import { capturedUrl } from "./helpers.js";
 import { userAgent, VERSION } from "../../src/version.js";
@@ -402,7 +402,7 @@ describe("getArtifacts", () => {
   it("saves an uncompressed .tar (the server streams docker cp output) in a fresh private dir", async () => {
     stubTar();
     const path = await makeClient().getArtifacts({ session: "sess-1", path: "/app/logs" });
-    expect(path).toBe(`${ARTIFACT_DIR}/gameye-artifact-sess-1.tar`);
+    expect(path).toBe(join(ARTIFACT_DIR, "gameye-artifact-sess-1.tar"));
     expect(vi.mocked(mkdtemp)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(open)).toHaveBeenCalledWith(path, "wx", 0o600);
     const handle = await vi.mocked(open).mock.results[0].value;
@@ -414,7 +414,7 @@ describe("getArtifacts", () => {
     stubTar();
     for (const session of ["../../etc/passwd", "a/b/c", "..", "/abs", "..\\win", "...", ""]) {
       const out = await makeClient().getArtifacts({ session, path: "/x" });
-      expect(dirname(out)).toBe(ARTIFACT_DIR);
+      expect(dirname(out)).toBe(join(ARTIFACT_DIR));
       expect(basename(out)).not.toMatch(/[\/\\]/);
       expect(basename(out)).not.toContain("..");
       expect(basename(out).startsWith("gameye-artifact-")).toBe(true);

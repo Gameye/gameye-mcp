@@ -13,8 +13,9 @@ const NEW_TOKEN = "gy_new_secret_token_fedcba9876543210";
 let dir: string;
 
 beforeEach(async () => {
-  // realpath: on macOS tmpdir() is behind the /var -> /private/var symlink.
-  dir = realpathSync(await mkdtemp(join(tmpdir(), "gameye-token-test-")));
+  // realpath: on macOS tmpdir() is behind the /var -> /private/var symlink. The native
+  // version also expands Windows 8.3 short names (RUNNER~1), as the server's realpath does.
+  dir = realpathSync.native(await mkdtemp(join(tmpdir(), "gameye-token-test-")));
 });
 
 afterEach(async () => {
