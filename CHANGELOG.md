@@ -2,6 +2,12 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## 0.3.1
+
+- README: Windows notes (start the server through `cmd /c npx` in most Windows MCP clients, type `npx.cmd` in PowerShell, first-start time, how `gameye_update_skills` and `gameye_create_token` behave on Windows). Tested on Windows 11 with Node.js 22 and Claude Code.
+- CI runs the unit tests, build and stdio smoke test on Windows.
+- No changes to the server.
+
 ## 0.3.0
 
 - The release workflow skips `npm publish` when npm already holds this version with the same tarball, and waits up to 15 minutes for npm to show a new version. A release whose npm check timed out can now be finished by re-running its failed jobs.
