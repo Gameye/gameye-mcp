@@ -67,7 +67,7 @@ Restart the client after you change its configuration.
 
 ### Windows
 
-The server runs on Windows with Node.js 22 or newer. Windows testing is behind macOS and Linux, so please [open an issue](https://github.com/Gameye/gameye-mcp/issues) if something breaks.
+The server runs on Windows with Node.js 22 or newer. We've tested it on Windows 11, through Claude Code and over plain stdio. If something breaks on Windows, please [open an issue](https://github.com/Gameye/gameye-mcp/issues).
 
 - Many Windows MCP clients can't start `npx` directly, because it's a `.cmd` script. Start it through `cmd /c` instead:
 
@@ -76,7 +76,8 @@ The server runs on Windows with Node.js 22 or newer. Windows testing is behind m
   "args": ["/c", "npx", "-y", "gameye-mcp"]
   ```
 
-  With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- cmd /c npx -y gameye-mcp`.
+  With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- cmd /c npx -y gameye-mcp`. Claude Code 2.1.296 and later also start plain `npx`.
+- In PowerShell, type `npx.cmd` instead of `npx` when you run the server by hand. A new Windows install blocks the `npx` PowerShell script with "running scripts is disabled on this system".
 - The first start downloads the package and can take 10 to 40 seconds. Later starts take about a second.
 - `gameye_update_skills` reports outdated skills on Windows but doesn't run the update. It prints the commands for you to run.
 - `gameye_create_token` writes the token file with owner-only permissions on macOS and Linux. On Windows those permissions don't apply, and the file gets the access rules of its folder. Write it inside your user profile.
