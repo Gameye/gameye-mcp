@@ -1,0 +1,68 @@
+{
+  "manifest_version": "0.3",
+  "name": "gameye-mcp",
+  "display_name": "Gameye",
+  "version": "0.3.1",
+  "description": "Launch, inspect and stop multiplayer game server sessions on Gameye from any MCP client.",
+  "long_description": "MCP server for the Gameye game server orchestration API. Launch and stop dedicated server sessions, check image tags and regions, fetch logs and artifacts, and manage applications and scoped API tokens. Guardrails include dry-run mode, a default 30 minute session TTL, single-session stops, and masking of the API token in every result. Beta (0.x): tools may change between releases.",
+  "author": { "name": "Gameye B.V.", "email": "hello@gameye.com", "url": "https://gameye.com" },
+  "homepage": "https://gameye.com/docs/guides/using-gameye/ai-agents/",
+  "documentation": "https://github.com/Gameye/gameye-mcp#readme",
+  "support": "https://github.com/Gameye/gameye-mcp/issues",
+  "repository": { "type": "git", "url": "https://github.com/Gameye/gameye-mcp" },
+  "license": "MIT",
+  "keywords": ["gameye", "game servers", "multiplayer", "dedicated servers", "game server hosting"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "GAMEYE_API_TOKEN": "${user_config.api_token}",
+        "GAMEYE_ENV": "${user_config.environment}"
+      }
+    }
+  },
+  "user_config": {
+    "api_token": {
+      "type": "string",
+      "title": "Gameye API token",
+      "description": "Create one in the Gameye Admin Panel under Users, API tokens. Use the least-privileged scopes you need.",
+      "sensitive": true,
+      "required": true
+    },
+    "environment": {
+      "type": "string",
+      "title": "Environment",
+      "description": "sandbox for self-serve accounts (default), production for enterprise accounts.",
+      "default": "sandbox",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "gameye_context", "description": "Show the environment, host, server version and guardrail defaults" },
+    { "name": "gameye_launch_session", "description": "Start a containerized game server session (billable)" },
+    { "name": "gameye_list_sessions", "description": "List running sessions" },
+    { "name": "gameye_describe_session", "description": "Get session details, ports and players" },
+    { "name": "gameye_stop_session", "description": "Stop one session by its exact ID" },
+    { "name": "gameye_player_join", "description": "Register players as joined" },
+    { "name": "gameye_player_leave", "description": "Remove players from a session" },
+    { "name": "gameye_get_locations", "description": "List locations that can host an image right now" },
+    { "name": "gameye_list_regions", "description": "List the regions available to your organization" },
+    { "name": "gameye_check_tag", "description": "Check whether an image tag is available in a region" },
+    { "name": "gameye_list_applications", "description": "List your applications" },
+    { "name": "gameye_list_registry_tags", "description": "List an application's tags in its upstream registry" },
+    { "name": "gameye_enable_tag", "description": "Enable an image tag so Gameye preloads it" },
+    { "name": "gameye_get_logs", "description": "Fetch session logs" },
+    { "name": "gameye_get_artifacts", "description": "Download files from a session container as a tar archive" },
+    { "name": "gameye_create_application", "description": "Create an application" },
+    { "name": "gameye_edit_application", "description": "Change an application" },
+    { "name": "gameye_create_token", "description": "Create an API token and write it to a file" },
+    { "name": "gameye_update_skills", "description": "Check and update the installed Gameye agent skills" }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=22.0.0" }
+  }
+}

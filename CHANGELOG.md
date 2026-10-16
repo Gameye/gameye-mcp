@@ -2,6 +2,12 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## Unreleased
+
+- `manifest.json` and `.mcpbignore` build an MCPB bundle (`npx @anthropic-ai/mcpb pack`) for Smithery and one-click Claude Desktop installs. A unit test keeps its version and tool list in step with the package.
+- `glama.json` names the maintainers so the Glama directory listing can be claimed.
+- No changes to the server.
+
 ## 0.3.1
 
 - README: Windows notes (start the server through `cmd /c npx` in most Windows MCP clients, type `npx.cmd` in PowerShell, first-start time, how `gameye_update_skills` and `gameye_create_token` behave on Windows). Tested on Windows 11 with Node.js 22 and Claude Code.
