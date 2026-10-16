@@ -1,0 +1,12 @@
+src/
+tests/
+spec/
+scripts/
+.github/
+*.ts
+!dist/**
+tsconfig*.json
+vitest*.ts
+Dockerfile
+.dockerignore
+package-lock.json
