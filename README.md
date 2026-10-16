@@ -1,5 +1,7 @@
 # Gameye MCP Server
 
+[![Discord](https://img.shields.io/badge/Discord-join%20chat-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/QvJ3KH5max)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server for the [Gameye](https://gameye.com) game server orchestration API. It lets an AI agent (Claude Code, Claude Desktop, Cursor, or any MCP client) launch and inspect game server sessions, check image tags and regions, and fetch logs and artifacts. You talk to it in plain language, and you don't have to leave your editor.
 
 > **Status: beta** (`0.x`). Tools, inputs and outputs may change between releases, and there may be bugs. The server says so to every client that connects, on startup, and in `gameye_context`. It is published on npm as [`gameye-mcp`](https://www.npmjs.com/package/gameye-mcp), as a container image at `ghcr.io/gameye/gameye-mcp`, and in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.Gameye/gameye-mcp`; see the [changelog](https://github.com/Gameye/gameye-mcp/blob/main/CHANGELOG.md) for what changed in each release.
