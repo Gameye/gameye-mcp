@@ -5,7 +5,7 @@
   "version": "0.3.1",
   "description": "Launch, inspect and stop multiplayer game server sessions on Gameye from any MCP client.",
   "long_description": "MCP server for the Gameye game server orchestration API. Launch and stop dedicated server sessions, check image tags and regions, fetch logs and artifacts, and manage applications and scoped API tokens. Guardrails include dry-run mode, a default 30 minute session TTL, single-session stops, and masking of the API token in every result. Beta (0.x): tools may change between releases.",
-  "author": { "name": "Gameye B.V.", "email": "hello@gameye.com", "url": "https://gameye.com" },
+  "author": { "name": "Gameye B.V.", "url": "https://gameye.com" },
   "homepage": "https://gameye.com/docs/guides/using-gameye/ai-agents/",
   "documentation": "https://github.com/Gameye/gameye-mcp#readme",
   "support": "https://github.com/Gameye/gameye-mcp/issues",
