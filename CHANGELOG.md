@@ -2,7 +2,7 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
-## Unreleased
+## 0.3.2
 
 - `gameye_update_skills` runs updaters only when the operator sets `GAMEYE_ENABLE_SKILLS_UPDATE=1`. Without it, `apply: true` lists the commands for the user to run, as on Windows. Checking is unchanged.
 - The updater's child process gets an allowlisted environment (paths, home, temp, locale, proxy and CA settings, npm and Claude config). `GAMEYE_*` variables and anything named like a token, secret, password or key are never passed, so the Gameye API token stays in the server.
@@ -11,7 +11,6 @@ All notable changes to `gameye-mcp` are listed here. The project follows [semant
 - CI fails on high or critical advisories in runtime dependencies, its actions are pinned by commit, and Dependabot proposes npm and Actions updates weekly.
 - `manifest.json` and `.mcpbignore` build an MCPB bundle (`npx @anthropic-ai/mcpb pack`) for Smithery and one-click Claude Desktop installs. A unit test keeps its version and tool list in step with the package.
 - `glama.json` names the maintainers so the Glama directory listing can be claimed.
-- No changes to the server.
 
 ## 0.3.1
 
