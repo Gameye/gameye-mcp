@@ -5,6 +5,7 @@ import {
   compareVersions,
   defaultSkillsEnv,
   describeInstall,
+  ENABLE_UPDATE_ENV,
   fetchLatestPackVersion,
   findSkillsInstalls,
   isOutdated,
@@ -26,7 +27,8 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
         "Compare the installed Gameye agent skills with the latest pack on GitHub, and update them. " +
         "Finds installs made with the skills CLI (user-wide or in this project) and the Claude Code plugin gameye@gameye. " +
         "Without apply it only checks and changes nothing. With apply=true it runs each outdated install's own updater " +
-        "(npx skills update for the Gameye skills only, or claude plugin update); ask the user before applying. " +
+        "(npx skills update for the Gameye skills only, or claude plugin update) when the operator set " +
+        `${ENABLE_UPDATE_ENV}=1; otherwise it lists the commands for the user to run. Ask the user before applying. ` +
         "Updates come only through those package managers; this tool never downloads or follows skill text itself.",
       inputSchema: {
         apply: z
@@ -77,8 +79,15 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
       if (outdated.length === 0) return lines.join("\n");
 
       const commands = outdated.flatMap(updateCommands);
-      if (!apply || env.platform === "win32") {
-        lines.push("", apply ? "Updating from this server isn't supported on Windows. Run:" : "Call again with apply=true to run:");
+      if (!apply || env.platform === "win32" || !env.applyEnabled) {
+        const why = !apply
+          ? env.applyEnabled
+            ? "Call again with apply=true to run:"
+            : "Run:"
+          : env.platform === "win32"
+            ? "Updating from this server isn't supported on Windows. Run:"
+            : `Updating from this server is off (set ${ENABLE_UPDATE_ENV}=1 in the server's environment to allow it). Run:`;
+        lines.push("", why);
         for (const cmd of commands) lines.push(`  ${cmd.join(" ")}`);
         return lines.join("\n");
       }

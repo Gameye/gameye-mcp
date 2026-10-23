@@ -32,6 +32,7 @@ The environment is a property of the server process. No tool takes an environmen
 | `GAMEYE_API_TOKEN` | **Yes** | — | Gameye API token. Use the least-privileged scopes you need (see below). |
 | `GAMEYE_ENV` | No | `sandbox` | `sandbox` or `production`. Selects the API host. |
 | `GAMEYE_API_URL` | No | — | Overrides the host, for testing only. Must be `https`. If it equals one of the two known hosts, it must match `GAMEYE_ENV` or the server refuses to start. Any other URL is labelled `custom` in every tool result. |
+| `GAMEYE_ENABLE_SKILLS_UPDATE` | No | — | Set to `1` to let `gameye_update_skills` run the skills updaters with `apply: true`. Without it the tool only checks and lists the commands. |
 | `GAMEYE_TIMEOUT_MS` | No | `30000` | Per-request timeout in milliseconds, a positive whole number. Log snapshots get at least 60 s and artifact downloads at least 120 s. A request that runs out of time comes back as a tool error: `Request to <host> timed out after <n>s`. |
 
 ## Install
@@ -174,7 +175,7 @@ The [Gameye skills](https://github.com/gameye/gameye-skills) change as the Gamey
 - **skills CLI, this project:** the same, in `skills-lock.json` in the server's working directory.
 - **Claude Code plugin:** `gameye@gameye` in `~/.claude/plugins/installed_plugins.json`.
 
-Without `apply` it only reports. With `apply: true` it runs each outdated install's own updater: `npx -y skills update <the Gameye skills> -g -y` (or `-p -y`), or `claude plugin marketplace update gameye` then `claude plugin update gameye@gameye`. It only updates skills whose lock-file source is `gameye/gameye-skills`, and it never downloads or follows skill text itself. Each command runs with stdin closed and a 90-second limit. On Windows it prints the commands instead of running them. The running agent session keeps the skills it loaded; the next session uses the update. The `gameye` skill tells agents to run the check once per conversation and ask before applying.
+Without `apply` it only reports. With `apply: true`, and only when the server was started with `GAMEYE_ENABLE_SKILLS_UPDATE=1`, it runs each outdated install's own updater: `npx -y skills@1.7.4 update <the Gameye skills> -g -y` (or `-p -y`), or `claude plugin marketplace update gameye` then `claude plugin update gameye@gameye`. Otherwise it lists those commands for you to run. The updaters get a minimal environment: paths, home, temp, locale, proxy and CA settings and npm and Claude config, never `GAMEYE_*` variables or anything named like a token, secret, password or key. It only updates skills whose lock-file source is `gameye/gameye-skills`, and it never downloads or follows skill text itself. Each command runs with stdin closed and a 90-second limit. On Windows it prints the commands instead of running them. The running agent session keeps the skills it loaded; the next session uses the update. The `gameye` skill tells agents to run the check once per conversation and ask before applying.
 
 ## Telemetry/attribution
 
