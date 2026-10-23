@@ -11,6 +11,35 @@ const SKILLS_SOURCE_RE = /^(https:\/\/github\.com\/|git@github\.com:|github:)?ga
 // Lock files can come from a cloned project, so a name must look like a skill name, never a CLI option.
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 
+/** The skills CLI the updater runs, pinned so `npx` never fetches whatever is newest. */
+export const SKILLS_CLI = "skills@1.7.4";
+
+/** Set to 1 to let `gameye_update_skills` run updaters; otherwise apply prints the commands. */
+export const ENABLE_UPDATE_ENV = "GAMEYE_ENABLE_SKILLS_UPDATE";
+
+// What an updater needs from the parent: where to find programs and home, temp dirs, locale,
+// proxy and CA settings, npm and Claude config. Nothing else is passed, so the Gameye token stays here.
+const CHILD_ENV_NAMES = new Set([
+  "PATH", "Path", "PATHEXT", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "HOMEDRIVE", "HOMEPATH",
+  "SystemRoot", "SYSTEMROOT", "ComSpec", "COMSPEC", "WINDIR", "TEMP", "TMP", "TMPDIR",
+  "USER", "LOGNAME", "SHELL", "LANG", "LC_ALL", "TERM",
+  "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy",
+  "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR", "CLAUDE_CONFIG_DIR",
+]);
+const CHILD_ENV_PREFIXES = ["XDG_", "npm_config_", "NPM_CONFIG_"];
+// Never passed, even under an allowed prefix: an npm registry token is not the updater's business either.
+const SECRET_NAME_RE = /token|secret|password|passwd|auth|key|credential/i;
+
+/** The environment an updater runs with: the allowlist above, no Gameye variables, nothing that looks like a secret. */
+export function childEnv(parent: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const [name, value] of Object.entries(parent)) {
+    if (value === undefined || name.toUpperCase().startsWith("GAMEYE_") || SECRET_NAME_RE.test(name)) continue;
+    if (CHILD_ENV_NAMES.has(name) || CHILD_ENV_PREFIXES.some((p) => name.startsWith(p))) env[name] = value;
+  }
+  return { ...env, NO_COLOR: "1", FORCE_COLOR: "0", CI: "1" };
+}
+
 /** How the Gameye skills were installed. Each kind updates differently. */
 export type InstallKind = "skills-cli-global" | "skills-cli-project" | "claude-plugin";
 
@@ -27,6 +56,8 @@ export interface SkillsEnv {
   home: string;
   cwd: string;
   platform: NodeJS.Platform;
+  /** The operator set GAMEYE_ENABLE_SKILLS_UPDATE=1: apply may run updaters. */
+  applyEnabled: boolean;
   readText: (path: string) => Promise<string | undefined>;
   fetchText: (url: string) => Promise<string>;
   run: (cmd: string, args: string[], cwd: string) => Promise<string>;
@@ -37,6 +68,7 @@ export function defaultSkillsEnv(): SkillsEnv {
     home: homedir(),
     cwd: process.cwd(),
     platform: process.platform,
+    applyEnabled: process.env[ENABLE_UPDATE_ENV] === "1",
     readText: (path) => readFile(path, "utf8").catch(() => undefined),
     fetchText: async (url) => {
       const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
@@ -45,8 +77,7 @@ export function defaultSkillsEnv(): SkillsEnv {
     },
     run: (cmd, args, cwd) =>
       new Promise((resolve, reject) => {
-        const childEnv = { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0", CI: "1" };
-        const options = { cwd, env: childEnv, timeout: 90_000, killSignal: "SIGKILL" as const, maxBuffer: 4 * 1024 * 1024 };
+        const options = { cwd, env: childEnv(process.env), timeout: 90_000, killSignal: "SIGKILL" as const, maxBuffer: 4 * 1024 * 1024 };
         const child = execFile(cmd, args, options, (err, stdout, stderr) => {
           const out = stripAnsi(`${stdout}${stderr}`).trim();
           if (err) reject(new Error(`${cmd} ${args.join(" ")} failed: ${err.message}\n${out}`));
@@ -151,9 +182,9 @@ export function isOutdated(install: SkillsInstall, latest: string): boolean {
 export function updateCommands(install: SkillsInstall): string[][] {
   switch (install.kind) {
     case "skills-cli-global":
-      return [["npx", "-y", "skills", "update", ...install.skills, "-g", "-y"]];
+      return [["npx", "-y", SKILLS_CLI, "update", ...install.skills, "-g", "-y"]];
     case "skills-cli-project":
-      return [["npx", "-y", "skills", "update", ...install.skills, "-p", "-y"]];
+      return [["npx", "-y", SKILLS_CLI, "update", ...install.skills, "-p", "-y"]];
     case "claude-plugin":
       return [
         ["claude", "plugin", "marketplace", "update", "gameye"],

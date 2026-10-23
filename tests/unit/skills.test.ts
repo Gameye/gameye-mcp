@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
 import { registerSkillsTools } from "../../src/tools/skills.js";
-import { compareVersions, LATEST_PACK_URL, parsePackVersion, stripAnsi, type SkillsEnv } from "../../src/skills.js";
+import { childEnv, compareVersions, LATEST_PACK_URL, parsePackVersion, stripAnsi, type SkillsEnv } from "../../src/skills.js";
 import { makeMockServer, makeContext, getText } from "./helpers.js";
 
 const HOME = join("/", "u", "tester");
@@ -10,13 +10,14 @@ const skill = (v: string) => `---\nname: gameye\n---\n\n# Gameye\n\nPack version
 const lock = (skills: Record<string, string>) =>
   JSON.stringify({ version: 3, skills: Object.fromEntries(Object.entries(skills).map(([n, source]) => [n, { source }])) });
 
-function setup(files: Record<string, string>, latest = "1.5.0", opts: { runFails?: boolean; runNoop?: boolean; fetchFails?: boolean; platform?: NodeJS.Platform } = {}) {
+function setup(files: Record<string, string>, latest = "1.5.0", opts: { runFails?: boolean; runNoop?: boolean; fetchFails?: boolean; platform?: NodeJS.Platform; applyEnabled?: boolean } = {}) {
   const disk = { ...files };
   const ran: string[] = [];
   const env: SkillsEnv = {
     home: HOME,
     cwd: CWD,
     platform: opts.platform ?? "linux",
+    applyEnabled: opts.applyEnabled ?? true,
     readText: async (p) => disk[p],
     fetchText: async (url) => {
       expect(url).toBe(LATEST_PACK_URL);
@@ -56,13 +57,42 @@ describe("pack version helpers", () => {
   });
 });
 
+describe("the updater's environment", () => {
+  it("keeps what an updater needs and drops the Gameye token and other secrets", () => {
+    const env = childEnv({
+      PATH: "/usr/bin",
+      HOME: "/u/tester",
+      HTTPS_PROXY: "http://proxy:3128",
+      npm_config_registry: "https://registry.npmjs.org/",
+      npm_config__authToken: "npm-secret",
+      NPM_CONFIG_TOKEN: "npm-secret-2",
+      GAMEYE_API_TOKEN: "gameye-secret",
+      gameye_api_token: "gameye-secret-lower",
+      GAMEYE_ENV: "production",
+      AWS_SECRET_ACCESS_KEY: "aws-secret",
+      GITHUB_TOKEN: "gh-secret",
+      ANTHROPIC_API_KEY: "sk-secret",
+      SOME_OTHER_VAR: "x",
+    });
+    expect(env).toEqual({
+      PATH: "/usr/bin",
+      HOME: "/u/tester",
+      HTTPS_PROXY: "http://proxy:3128",
+      npm_config_registry: "https://registry.npmjs.org/",
+      NO_COLOR: "1",
+      FORCE_COLOR: "0",
+      CI: "1",
+    });
+  });
+});
+
 describe("gameye_update_skills", () => {
   it("only checks by default and runs nothing", async () => {
     const { call, ran } = setup(globalInstall);
     const text = getText(await call());
     expect(text).toContain("Latest Gameye skills pack: 1.5.0");
     expect(text).toContain("skills CLI, user-wide: pack 1.4.0 (update available)");
-    expect(text).toContain("npx -y skills update gameye gameye-launch -g -y");
+    expect(text).toContain("npx -y skills@1.7.4 update gameye gameye-launch -g -y");
     expect(ran).toEqual([]);
   });
 
@@ -70,7 +100,7 @@ describe("gameye_update_skills", () => {
     const { call, ran } = setup(globalInstall);
     const res = await call({ apply: true });
     expect(res.isError).toBeFalsy();
-    expect(ran).toEqual(["npx -y skills update gameye gameye-launch -g -y"]);
+    expect(ran).toEqual(["npx -y skills@1.7.4 update gameye gameye-launch -g -y"]);
     expect(getText(res)).toMatch(/After updating:\n• skills CLI, user-wide: pack 1\.5\.0/);
   });
 
@@ -94,7 +124,7 @@ describe("gameye_update_skills", () => {
     });
     await call({ apply: true });
     expect(ran).toEqual([
-      "npx -y skills update gameye -p -y",
+      "npx -y skills@1.7.4 update gameye -p -y",
       "claude plugin marketplace update gameye",
       "claude plugin update gameye@gameye",
     ]);
@@ -132,7 +162,7 @@ describe("gameye_update_skills", () => {
       [join(HOME, ".agents", ".skill-lock.json")]: lock({ gameye: "gameye/gameye-skills", "--yes-all": "gameye/gameye-skills" }),
     });
     await call({ apply: true });
-    expect(ran).toEqual(["npx -y skills update gameye -g -y"]);
+    expect(ran).toEqual(["npx -y skills@1.7.4 update gameye -g -y"]);
   });
 
   it("recognises the other ways a lock file names the repository", async () => {
@@ -144,7 +174,7 @@ describe("gameye_update_skills", () => {
         evil: "evil/gameye-skills",
       }),
     });
-    expect(getText(await call())).toContain("npx -y skills update gameye gameye-launch gameye-troubleshoot -g -y");
+    expect(getText(await call())).toContain("npx -y skills@1.7.4 update gameye gameye-launch gameye-troubleshoot -g -y");
   });
 
   it("reports the installs and updates nothing when GitHub can't be read", async () => {
@@ -172,8 +202,19 @@ describe("gameye_update_skills", () => {
     const { call, ran } = setup(globalInstall, "1.5.0", { platform: "win32" });
     const text = getText(await call({ apply: true }));
     expect(text).toContain("isn't supported on Windows");
-    expect(text).toContain("npx -y skills update gameye gameye-launch -g -y");
+    expect(text).toContain("npx -y skills@1.7.4 update gameye gameye-launch -g -y");
     expect(ran).toEqual([]);
+  });
+
+  it("prints the commands instead of running them unless the operator enabled updates", async () => {
+    const { call, ran } = setup(globalInstall, "1.5.0", { applyEnabled: false });
+    const res = await call({ apply: true });
+    expect(res.isError).toBeFalsy();
+    expect(getText(res)).toContain("set GAMEYE_ENABLE_SKILLS_UPDATE=1");
+    expect(getText(res)).toContain("npx -y skills@1.7.4 update gameye gameye-launch -g -y");
+    expect(ran).toEqual([]);
+    const check = getText(await call());
+    expect(check).not.toContain("apply=true");
   });
 
   it("doesn't suggest updating a loaded skill that is already current", async () => {

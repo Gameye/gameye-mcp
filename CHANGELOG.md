@@ -4,6 +4,11 @@ All notable changes to `gameye-mcp` are listed here. The project follows [semant
 
 ## Unreleased
 
+- `gameye_update_skills` runs updaters only when the operator sets `GAMEYE_ENABLE_SKILLS_UPDATE=1`. Without it, `apply: true` lists the commands for the user to run, as on Windows. Checking is unchanged.
+- The updater's child process gets an allowlisted environment (paths, home, temp, locale, proxy and CA settings, npm and Claude config). `GAMEYE_*` variables and anything named like a token, secret, password or key are never passed, so the Gameye API token stays in the server.
+- The skills CLI is pinned: `npx -y skills@1.7.4 update …` instead of whatever version is newest.
+- `@modelcontextprotocol/sdk` raised to `^1.32.1` and transitive dependencies updated: `npm audit` reports no advisories (it reported 10 before; none were reachable over the stdio transport the server uses).
+- CI fails on high or critical advisories in runtime dependencies, its actions are pinned by commit, and Dependabot proposes npm and Actions updates weekly.
 - `manifest.json` and `.mcpbignore` build an MCPB bundle (`npx @anthropic-ai/mcpb pack`) for Smithery and one-click Claude Desktop installs. A unit test keeps its version and tool list in step with the package.
 - `glama.json` names the maintainers so the Glama directory listing can be claimed.
 - No changes to the server.
