@@ -4,6 +4,8 @@
 // single tool call: an agent cannot switch to production mid-conversation.
 // Users who need both environments run two named server entries.
 
+import { parseDurationMs } from "./limits.js";
+
 export const KNOWN_HOSTS = {
   sandbox: "https://api.sandbox-gameye.gameye.net",
   production: "https://api.production-gameye.gameye.net",
@@ -25,7 +27,33 @@ export interface ResolvedConfig {
   token: string;
   /** Default per-request timeout in milliseconds (GAMEYE_TIMEOUT_MS, default 30s). */
   timeoutMs: number;
+  /** Local launch and stop limits (GAMEYE_MAX_SESSIONS, GAMEYE_MAX_TTL, GAMEYE_MAX_LAUNCHES, GAMEYE_STOP_OWN_ONLY). */
+  limits: SessionLimits;
 }
+
+/** Limits on what an agent can start through one server process. See limits.ts. */
+export interface SessionLimits {
+  /** Sessions started by this process that may run at once. */
+  maxSessions: number;
+  /** Longest TTL a launch may ask for, as given (e.g. `4h`). */
+  maxTtl: string;
+  maxTtlMs: number;
+  /** Launches per server process. */
+  maxLaunches: number;
+  /** Stop only sessions this process started. */
+  stopOwnOnly: boolean;
+}
+
+export const DEFAULT_LIMITS: SessionLimits = {
+  maxSessions: 5,
+  maxTtl: "4h",
+  maxTtlMs: 4 * 3_600_000,
+  maxLaunches: 20,
+  stopOwnOnly: false,
+};
+
+/** Shortest GAMEYE_MAX_TTL: the default TTL a launch without one gets (DEFAULT_SESSION_TTL). */
+const MIN_MAX_TTL_MS = 30 * 60_000;
 
 /** Per-request timeout used when GAMEYE_TIMEOUT_MS is not set. */
 export const DEFAULT_TIMEOUT_MS = 30_000;
@@ -54,6 +82,40 @@ function parseTimeoutMs(raw: string | undefined): number {
     );
   }
   return ms;
+}
+
+function parsePositiveInt(name: string, raw: string | undefined, fallback: number): number {
+  const value = nonEmpty(raw);
+  if (value === undefined) return fallback;
+  const n = /^\d+$/.test(value) ? Number(value) : NaN;
+  if (!Number.isSafeInteger(n) || n <= 0) {
+    throw new ConfigError(`${name} must be a positive whole number (got "${value}"). Leave it unset for ${fallback}.`);
+  }
+  return n;
+}
+
+function parseLimits(env: Record<string, string | undefined>): SessionLimits {
+  const maxSessions = parsePositiveInt("GAMEYE_MAX_SESSIONS", env.GAMEYE_MAX_SESSIONS, DEFAULT_LIMITS.maxSessions);
+  const maxLaunches = parsePositiveInt("GAMEYE_MAX_LAUNCHES", env.GAMEYE_MAX_LAUNCHES, DEFAULT_LIMITS.maxLaunches);
+
+  let { maxTtl, maxTtlMs } = DEFAULT_LIMITS;
+  const rawTtl = nonEmpty(env.GAMEYE_MAX_TTL);
+  if (rawTtl !== undefined) {
+    const ms = parseDurationMs(rawTtl);
+    if (ms === undefined || ms < MIN_MAX_TTL_MS) {
+      throw new ConfigError(
+        `GAMEYE_MAX_TTL must be a duration of at least 30m, like 2h or 90m (got "${rawTtl}"). Leave it unset for ${DEFAULT_LIMITS.maxTtl}.`
+      );
+    }
+    maxTtl = rawTtl;
+    maxTtlMs = ms;
+  }
+
+  const rawOwn = nonEmpty(env.GAMEYE_STOP_OWN_ONLY);
+  if (rawOwn !== undefined && rawOwn !== "1" && rawOwn !== "0") {
+    throw new ConfigError(`GAMEYE_STOP_OWN_ONLY must be 1 or 0 (got "${rawOwn}"). Leave it unset to allow stopping any session the token can see.`);
+  }
+  return { maxSessions, maxTtl, maxTtlMs, maxLaunches, stopOwnOnly: rawOwn === "1" };
 }
 
 /** Lowercase a hostname and drop a trailing root dot (`example.com.` is the same host as `example.com`). */
@@ -93,6 +155,7 @@ export function resolveConfig(env: Record<string, string | undefined>): Resolved
   }
 
   const timeoutMs = parseTimeoutMs(env.GAMEYE_TIMEOUT_MS);
+  const limits = parseLimits(env);
 
   const rawEnv = nonEmpty(env.GAMEYE_ENV);
   let tier: Tier = "sandbox";
@@ -108,7 +171,7 @@ export function resolveConfig(env: Record<string, string | undefined>): Resolved
   const rawUrl = nonEmpty(env.GAMEYE_API_URL);
   if (rawUrl === undefined) {
     const baseUrl = KNOWN_HOSTS[tier];
-    return { environment: tier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs };
+    return { environment: tier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs, limits };
   }
 
   let url: URL;
@@ -133,11 +196,11 @@ export function resolveConfig(env: Record<string, string | undefined>): Resolved
       );
     }
     const baseUrl = KNOWN_HOSTS[knownTier];
-    return { environment: knownTier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs };
+    return { environment: knownTier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs, limits };
   }
 
   const baseUrl = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
-  return { environment: "custom", baseUrl, host: url.host, token, timeoutMs };
+  return { environment: "custom", baseUrl, host: url.host, token, timeoutMs, limits };
 }
 
 /** Resolve from process.env, printing a clear message and exiting 1 on any error. */

@@ -28,6 +28,12 @@ export function registerContextTool(server: McpServer, ctx: ServerContext): void
         `  Session label: ${AGENT_LABEL_KEY}=${AGENT_LABEL_VALUE} on every launch`,
         `  Token expiry:  ${DEFAULT_TOKEN_EXPIRY} when gameye_create_token gives no expires_after`,
         "",
+        "Session limits (set when the server starts):",
+        `  Running at once: ${ctx.limits.maxSessions} sessions started by this server (GAMEYE_MAX_SESSIONS)`,
+        `  Longest TTL:     ${ctx.limits.maxTtl} (GAMEYE_MAX_TTL)`,
+        `  Launches:        ${ctx.limits.maxLaunches} per server run (GAMEYE_MAX_LAUNCHES)`,
+        `  Stop:            ${ctx.limits.stopOwnOnly ? "only sessions this server launched (GAMEYE_STOP_OWN_ONLY=1)" : "any session the token can see, by exact ID"}`,
+        "",
         "Token scopes: not introspectable. The Gameye API has no endpoint that reports a token's scopes; a call that needs a missing scope fails with 403 and names the required scope.",
         ctx.environment === "custom"
           ? "This server uses a non-standard GAMEYE_API_URL."

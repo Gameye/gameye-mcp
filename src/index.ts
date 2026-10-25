@@ -17,6 +17,7 @@ const ctx: ServerContext = {
   host: config.host,
   baseUrl: config.baseUrl,
   version,
+  limits: config.limits,
   mask: (text) => client.maskToken(text),
 };
 

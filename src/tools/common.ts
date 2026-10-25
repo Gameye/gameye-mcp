@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { GameyeError, GameyeTimeoutError, redactLabels } from "../client.js";
-import { resultPrefix, type EnvironmentLabel } from "../env.js";
+import { resultPrefix, type EnvironmentLabel, type SessionLimits } from "../env.js";
 import { GuardError } from "../guards.js";
 
 /** Shared `dryRun` input for every tool that sends a write. */
@@ -17,6 +17,8 @@ export interface ServerContext {
   host: string;
   baseUrl: string;
   version: string;
+  /** Local launch and stop limits, fixed when the server starts. */
+  limits: SessionLimits;
   /** Replace the API token with `***`. Applied to every tool result, success or error. */
   mask: (text: string) => string;
 }

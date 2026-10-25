@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ServerContext } from "../../src/tools/common.js";
+import { DEFAULT_LIMITS } from "../../src/env.js";
 
 export type ToolResult = {
   content: Array<{ type: string; text: string }>;
@@ -35,6 +36,7 @@ export function makeContext(overrides: Partial<ServerContext> = {}): ServerConte
     host: "api.sandbox-gameye.gameye.net",
     baseUrl: "https://api.sandbox-gameye.gameye.net",
     version: "0.0.0-test",
+    limits: DEFAULT_LIMITS,
     mask: (text: string) => text.split(TEST_TOKEN).join("***"),
     ...overrides,
   };

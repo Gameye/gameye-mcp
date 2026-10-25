@@ -287,3 +287,92 @@ describe("gameye_stop_session", () => {
     expect(getText(result)).toContain("timeout");
   });
 });
+
+// ─── session limits ───────────────────────────────────────────────────────────
+
+describe("session limits", () => {
+  function register(limits: Partial<import("../../src/env.js").SessionLimits>) {
+    const c = makeMockClient();
+    const mock = makeMockServer();
+    const ctx = makeContext();
+    registerSessionTools(mock.server, c as never, { ...ctx, limits: { ...ctx.limits, ...limits } });
+    return { c, h: mock.handlers, configs: mock.configs };
+  }
+
+  it("refuses a TTL above GAMEYE_MAX_TTL with nothing sent, also on dry run", async () => {
+    for (const dryRun of [false, true]) {
+      const r = await handlers["gameye_launch_session"]({ location: "eu", image: "csgo", ttl: "8h", dryRun });
+      expect(r.isError).toBe(true);
+      expect(getText(r)).toMatch(/above this server's limit of 4h \(GAMEYE_MAX_TTL\)/);
+    }
+    expect(client.launchSession).not.toHaveBeenCalled();
+  });
+
+  it("refuses ttl 0, which would mean no TTL", async () => {
+    const r = await handlers["gameye_launch_session"]({ location: "eu", image: "csgo", ttl: "0" });
+    expect(r.isError).toBe(true);
+    expect(client.launchSession).not.toHaveBeenCalled();
+  });
+
+  it("refuses a launch beyond GAMEYE_MAX_SESSIONS", async () => {
+    const { c, h } = register({ maxSessions: 1 });
+    c.launchSession.mockResolvedValue({ id: "s1", ports: [] });
+    c.listSessions.mockResolvedValue({ items: [{ id: "s1", status: "running" }] });
+    expect((await h["gameye_launch_session"]({ location: "eu", image: "csgo" })).isError).toBeUndefined();
+    const r = await h["gameye_launch_session"]({ location: "eu", image: "csgo" });
+    expect(r.isError).toBe(true);
+    expect(getText(r)).toMatch(/GAMEYE_MAX_SESSIONS/);
+    expect(c.launchSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not hold a slot for a launch the API refused with a 4xx", async () => {
+    const { c, h } = register({ maxSessions: 1 });
+    c.launchSession.mockRejectedValueOnce(new GameyeError(404, "not_found", "No such tag", []));
+    c.launchSession.mockResolvedValueOnce({ id: "s1", ports: [] });
+    expect((await h["gameye_launch_session"]({ location: "eu", image: "csgo" })).isError).toBe(true);
+    expect((await h["gameye_launch_session"]({ location: "eu", image: "csgo" })).isError).toBeUndefined();
+  });
+
+  it("holds a slot for a launch that failed with a 5xx, since it may have started", async () => {
+    const { c, h } = register({ maxSessions: 1 });
+    c.launchSession.mockRejectedValueOnce(new GameyeError(502, "bad_gateway", "Bad gateway", []));
+    c.listSessions.mockResolvedValue({ items: [] });
+    expect((await h["gameye_launch_session"]({ location: "eu", image: "csgo" })).isError).toBe(true);
+    const r = await h["gameye_launch_session"]({ location: "eu", image: "csgo" });
+    expect(getText(r)).toMatch(/GAMEYE_MAX_SESSIONS/);
+    expect(c.launchSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("states the limits in the launch description", () => {
+    const { configs: cfg } = register({ maxSessions: 3, maxTtl: "2h", maxTtlMs: 7_200_000, maxLaunches: 9 });
+    const d = cfg["gameye_launch_session"].description ?? "";
+    expect(d).toMatch(/above 2h/);
+    expect(d).toMatch(/3 sessions started by this server/);
+    expect(d).toMatch(/after 9 launches/);
+  });
+
+  describe("GAMEYE_STOP_OWN_ONLY=1", () => {
+    it("refuses to stop a session this server did not launch, with nothing sent", async () => {
+      const { c, h } = register({ stopOwnOnly: true });
+      const r = await h["gameye_stop_session"]({ id: "someone-elses" });
+      expect(r.isError).toBe(true);
+      expect(getText(r)).toMatch(/not launched by this server/);
+      expect(c.stopSession).not.toHaveBeenCalled();
+    });
+
+    it("stops a session this server launched", async () => {
+      const { c, h } = register({ stopOwnOnly: true });
+      c.launchSession.mockResolvedValue({ id: "mine", ports: [] });
+      await h["gameye_launch_session"]({ location: "eu", image: "csgo" });
+      const r = await h["gameye_stop_session"]({ id: "mine" });
+      expect(r.isError).toBeUndefined();
+      expect(c.stopSession).toHaveBeenCalledWith("mine");
+    });
+  });
+
+  it("stops any session by exact ID when GAMEYE_STOP_OWN_ONLY is off", async () => {
+    const r = await handlers["gameye_stop_session"]({ id: "any-session" });
+    expect(r.isError).toBeUndefined();
+    expect(client.stopSession).toHaveBeenCalledWith("any-session");
+  });
+});

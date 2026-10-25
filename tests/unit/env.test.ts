@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { ConfigError, KNOWN_HOSTS, loadConfigOrExit, resolveConfig, resultPrefix } from "../../src/env.js";
+import { ConfigError, DEFAULT_LIMITS, KNOWN_HOSTS, loadConfigOrExit, resolveConfig, resultPrefix } from "../../src/env.js";
 
 const TOKEN = "tok-test";
 
@@ -24,6 +24,7 @@ describe("resolveConfig", () => {
       host: "api.sandbox-gameye.gameye.net",
       token: TOKEN,
       timeoutMs: 30_000,
+      limits: DEFAULT_LIMITS,
     });
   });
 
@@ -161,5 +162,33 @@ describe("loadConfigOrExit", () => {
 
   it("returns the resolved config when valid", () => {
     expect(loadConfigOrExit({ GAMEYE_API_TOKEN: TOKEN }).environment).toBe("sandbox");
+  });
+});
+
+describe("session limits", () => {
+  const limits = (env: Record<string, string>) => resolveConfig({ GAMEYE_API_TOKEN: TOKEN, ...env }).limits;
+
+  it("defaults to 5 running, 4h TTL, 20 launches and stop-any", () => {
+    expect(limits({})).toEqual({ maxSessions: 5, maxTtl: "4h", maxTtlMs: 14_400_000, maxLaunches: 20, stopOwnOnly: false });
+  });
+
+  it("reads each limit from the environment", () => {
+    expect(limits({ GAMEYE_MAX_SESSIONS: "2", GAMEYE_MAX_TTL: "90m", GAMEYE_MAX_LAUNCHES: "8", GAMEYE_STOP_OWN_ONLY: "1" })).toEqual({
+      maxSessions: 2, maxTtl: "90m", maxTtlMs: 5_400_000, maxLaunches: 8, stopOwnOnly: true,
+    });
+  });
+
+  it.each([
+    ["GAMEYE_MAX_SESSIONS", "0"],
+    ["GAMEYE_MAX_SESSIONS", "-1"],
+    ["GAMEYE_MAX_SESSIONS", "two"],
+    ["GAMEYE_MAX_LAUNCHES", "1.5"],
+    ["GAMEYE_MAX_TTL", "10m"],
+    ["GAMEYE_MAX_TTL", "0"],
+    ["GAMEYE_MAX_TTL", "forever"],
+    ["GAMEYE_STOP_OWN_ONLY", "yes"],
+  ])("rejects %s=%s", (name, value) => {
+    expect(() => limits({ [name]: value })).toThrow(ConfigError);
+    expect(() => limits({ [name]: value })).toThrow(name);
   });
 });
