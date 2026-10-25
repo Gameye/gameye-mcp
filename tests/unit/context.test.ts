@@ -48,6 +48,11 @@ describe("gameye_context", () => {
     expect(text).toContain("Guardrail defaults:");
     expect(text).toMatch(/Session TTL:\s+30m when a launch gives no ttl/);
     expect(text).toMatch(/Session label:\s+launched-by=gameye-mcp on every launch/);
+    expect(text).toContain("Session limits (set when the server starts):");
+    expect(text).toMatch(/Running at once: 5 sessions started by this server \(GAMEYE_MAX_SESSIONS\)/);
+    expect(text).toMatch(/Longest TTL:\s+4h \(GAMEYE_MAX_TTL\)/);
+    expect(text).toMatch(/Launches:\s+20 per server run \(GAMEYE_MAX_LAUNCHES\)/);
+    expect(text).toMatch(/Stop:\s+any session the token can see, by exact ID/);
     expect(text).toMatch(/Token expiry:\s+24h when gameye_create_token gives no expires_after/);
   });
 });

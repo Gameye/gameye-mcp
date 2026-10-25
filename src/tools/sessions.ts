@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { GameyeClient } from "../client.js";
+import { GameyeClient, GameyeError } from "../client.js";
 import {
   AGENT_LABEL_KEY,
   AGENT_LABEL_VALUE,
@@ -10,7 +10,9 @@ import {
   assertNoTokenInLaunch,
   describeTtl,
   formatDryRun,
+  GuardError,
 } from "../guards.js";
+import { SessionLimiter } from "../limits.js";
 import type { Port } from "../types.js";
 import { defineTool, dryRunInput, formatLabels, type ServerContext } from "./common.js";
 
@@ -19,6 +21,9 @@ function formatPorts(ports: Port[] | undefined): string {
 }
 
 export function registerSessionTools(server: McpServer, client: GameyeClient, ctx: ServerContext): void {
+  const limiter = new SessionLimiter(ctx.limits, client);
+  const { maxSessions, maxTtl, maxLaunches, stopOwnOnly } = ctx.limits;
+
   // ─── Launch Session ──────────────────────────────────────────────────────────
 
   defineTool(
@@ -31,7 +36,9 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
         "Start a containerized game server session on the Gameye platform. Returns the session ID, host and ports. Starts a billable session in the environment shown in the result prefix. " +
         `When no ttl is given, a ${DEFAULT_SESSION_TTL} TTL is applied and reported. The label ${AGENT_LABEL_KEY}=${AGENT_LABEL_VALUE} is always sent and replaces any ${AGENT_LABEL_KEY} value you pass; ` +
         "if a warm pool serves the image and region, the server ignores request labels (and env and args), so warm-pool sessions do not carry it. " +
-        "The launch is refused, with nothing sent, if any env value, arg or label contains this server's Gameye API token. Pass dryRun=true to preview the request.",
+        "The launch is refused, with nothing sent, if any env value, arg or label contains this server's Gameye API token. " +
+        `It is also refused if the ttl is above ${maxTtl}, if ${maxSessions} sessions started by this server are already running, or after ${maxLaunches} launches by this server process; ` +
+        "these limits are set by the user when the server starts, and a refusal says which one applied. Pass dryRun=true to preview the request.",
       inputSchema: {
         location: z.string().describe("Region/datacenter to host the session (e.g. 'europe', 'us-east')"),
         image: z.string().describe("Docker image name to run (e.g. 'csgo', 'tf2')"),
@@ -44,7 +51,7 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
         ttl: z
           .string()
           .optional()
-          .describe(`Session time-to-live, e.g. '1h', '30m'. Session auto-stops after this duration. Defaults to ${DEFAULT_SESSION_TTL}`),
+          .describe(`Session time-to-live, e.g. '1h', '30m'. Session auto-stops after this duration. Defaults to ${DEFAULT_SESSION_TTL}; at most ${maxTtl}`),
         dryRun: dryRunInput,
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -52,11 +59,22 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
     async ({ dryRun, ...input }) => {
       assertNoTokenInLaunch(input, client);
       const { request, defaultTtlApplied } = applyLaunchDefaults(input);
-      const ttlLine = `  TTL:        ${describeTtl(request.ttl ?? DEFAULT_SESSION_TTL, defaultTtlApplied)}`;
+      const ttl = request.ttl ?? DEFAULT_SESSION_TTL;
+      const ttlMs = limiter.checkTtl(ttl);
+      const ttlLine = `  TTL:        ${describeTtl(ttl, defaultTtlApplied)}`;
       if (dryRun) {
         return `${formatDryRun(ctx, GameyeClient.launchSessionRequest(request), client)}\n\n${ttlLine.trim()}`;
       }
-      const result = await client.launchSession(request);
+      const slot = await limiter.reserve(ttlMs);
+      let result: Awaited<ReturnType<GameyeClient["launchSession"]>>;
+      try {
+        result = await client.launchSession(request);
+      } catch (err) {
+        // A 4xx means nothing started. A 5xx, timeout or network error may have started one.
+        slot.failed(!(err instanceof GameyeError && err.statusCode < 500));
+        throw err;
+      }
+      slot.started(result.id);
       const lines = [`Session launched successfully.`, `  Session ID: ${result.id}`, ttlLine];
       if (result.host) lines.push(`  Host:       ${result.host}`);
       if (result.ports?.length > 0) {
@@ -166,7 +184,9 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
       title: "Stop session",
       description:
         "Terminate one Gameye session by its exact ID (sends SIGTERM to the container). Any players connected to it are disconnected. The session transitions to 'draining' then 'shuttingdown' then 'exited'. " +
-        "There is no bulk or implicit stop: an empty, wildcard or list ID is refused. Pass dryRun=true to preview the request.",
+        "There is no bulk or implicit stop: an empty, wildcard or list ID is refused. " +
+        (stopOwnOnly ? "This server only stops sessions it launched itself (GAMEYE_STOP_OWN_ONLY=1). " : "") +
+        "Pass dryRun=true to preview the request.",
       inputSchema: {
         id: z.string().min(1).describe("Exact ID of the one session to stop"),
         dryRun: dryRunInput,
@@ -175,8 +195,15 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
     },
     async ({ id: rawId, dryRun }) => {
       const id = assertExplicitSessionId(rawId);
+      if (stopOwnOnly && !limiter.isOwn(id)) {
+        throw new GuardError(
+          `Stop refused: session ${id} was not launched by this server, and it only stops its own sessions (GAMEYE_STOP_OWN_ONLY=1). ` +
+            "Ask the user to stop it in the Admin Panel or from another tool. No request was sent."
+        );
+      }
       if (dryRun) return formatDryRun(ctx, GameyeClient.stopSessionRequest(id), client);
       await client.stopSession(id);
+      limiter.stopped(id);
       return `Session ${id} stop signal sent. The session is now draining.\n\nUse gameye_describe_session to monitor shutdown progress.`;
     }
   );

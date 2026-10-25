@@ -33,6 +33,10 @@ The environment is a property of the server process. No tool takes an environmen
 | `GAMEYE_ENV` | No | `sandbox` | `sandbox` or `production`. Selects the API host. |
 | `GAMEYE_API_URL` | No | — | Overrides the host, for testing only. Must be `https`. If it equals one of the two known hosts, it must match `GAMEYE_ENV` or the server refuses to start. Any other URL is labelled `custom` in every tool result. |
 | `GAMEYE_ENABLE_SKILLS_UPDATE` | No | — | Set to `1` to let `gameye_update_skills` run the skills updaters with `apply: true`. Without it the tool only checks and lists the commands. |
+| `GAMEYE_MAX_SESSIONS` | No | `5` | Most sessions launched by this server that may run at once. A launch past it is refused. |
+| `GAMEYE_MAX_TTL` | No | `4h` | Longest `ttl` a launch may ask for, at least `30m`. A longer TTL, or `0`, is refused. |
+| `GAMEYE_MAX_LAUNCHES` | No | `20` | Launches per server run. Restart the server to reset it. |
+| `GAMEYE_STOP_OWN_ONLY` | No | — | Set to `1` so `gameye_stop_session` only stops sessions this server launched. |
 | `GAMEYE_TIMEOUT_MS` | No | `30000` | Per-request timeout in milliseconds, a positive whole number. Log snapshots get at least 60 s and artifact downloads at least 120 s. A request that runs out of time comes back as a tool error: `Request to <host> timed out after <n>s`. |
 
 ## Install
@@ -66,7 +70,7 @@ Most clients (Claude Desktop, Cursor, Windsurf and others) accept an `mcpServers
 
 Restart the client after you change its configuration.
 
-`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.3.2` (or `"args": ["-y", "gameye-mcp@0.3.2"]`).
+`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.4.0` (or `"args": ["-y", "gameye-mcp@0.4.0"]`).
 
 ### Windows
 
@@ -108,7 +112,7 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 
 - Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
 - Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
-- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.3.2`.
+- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.4.0`.
 - Files the server writes stay inside the container, and `--rm` deletes them:
   - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
   - `gameye_create_token` writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
@@ -165,7 +169,8 @@ These behave the same on sandbox and production, because sandbox runs live match
 - **Bounded sessions.** A launch without `ttl` gets a `30m` TTL, and the result says the default was applied. Every launch sends the label `launched-by: gameye-mcp`, replacing any `launched-by` value the caller passes, so agent-launched sessions can be found with `gameye_list_sessions` and `filter: { "launched-by": "gameye-mcp" }`. When a warm pool serves the image and region, the Gameye API ignores request labels (and env and args), so warm-pool sessions do not carry this label.
 - **No token in game servers.** A launch is refused, with nothing sent, if any env value or name, arg, or label key or value contains this server's Gameye API token. Env values are never shown in results.
 - **No token in results.** Every tool result, including errors, has this server's API token replaced with `***`, in case log output, labels or an error message echo it.
-- **Explicit stops.** `gameye_stop_session` stops exactly one session by its exact ID. There is no bulk stop, and empty, wildcard or list IDs are refused.
+- **Explicit stops.** `gameye_stop_session` stops exactly one session by its exact ID. There is no bulk stop, and empty, wildcard or list IDs are refused. With `GAMEYE_STOP_OWN_ONLY=1` it also refuses any session this server did not launch.
+- **Session limits.** The Gameye API has no per-token budget, so the server enforces one before it sends a launch. By default an agent can have at most 5 sessions it launched running at once (`GAMEYE_MAX_SESSIONS`), each with a TTL of at most `4h` (`GAMEYE_MAX_TTL`), and at most 20 launches per server run (`GAMEYE_MAX_LAUNCHES`). That caps one run at 20 sessions of 4 hours, 80 session-hours, and 5 at a time. Before each launch the server lists the `launched-by: gameye-mcp` sessions to see which of its own have ended; if that list fails, the launch is refused. Warm-pool sessions carry no label, so they count until their TTL ends. A launch that timed out or got a 5xx may have started, so it counts too. The limits apply to one server process: sessions launched by other agents or tools in your organization don't count, and a restart starts from zero, so set an organization quota in Gameye as well. `gameye_context` shows the limits in force.
 
 ## Keeping the skills current
 
