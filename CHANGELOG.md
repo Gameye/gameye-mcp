@@ -2,7 +2,7 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
-## Unreleased
+## 0.4.0
 
 - Session limits, enforced by the server before a launch is sent. By default: at most 5 sessions launched by this server running at once (`GAMEYE_MAX_SESSIONS`), a TTL of at most `4h` (`GAMEYE_MAX_TTL`), and 20 launches per server run (`GAMEYE_MAX_LAUNCHES`). A refusal says which limit applied. If the server can't list its sessions to check, the launch is refused. **Behaviour change:** a launch with a `ttl` above `4h`, or `ttl: "0"`, is now refused unless `GAMEYE_MAX_TTL` is raised.
 - `GAMEYE_STOP_OWN_ONLY=1` makes `gameye_stop_session` refuse sessions this server did not launch. Off by default.

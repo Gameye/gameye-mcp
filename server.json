@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://gameye.com",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "gameye-mcp",
-      "version": "0.3.2",
+      "version": "0.4.0",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {
@@ -35,7 +35,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/gameye/gameye-mcp:0.3.2",
+      "identifier": "ghcr.io/gameye/gameye-mcp:0.4.0",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {
