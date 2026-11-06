@@ -42,6 +42,7 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
           .describe("The `Pack version:` from the gameye skill you have loaded, used when no install is found on disk"),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      requiresToken: false,
     },
     async ({ apply, installedVersion }) => {
       const installs = await findSkillsInstalls(env);

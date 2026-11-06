@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AGENT_LABEL_KEY, AGENT_LABEL_VALUE, DEFAULT_SESSION_TTL, DEFAULT_TOKEN_EXPIRY } from "../guards.js";
 import { defineTool, type ServerContext } from "./common.js";
 import { BETA_NOTICE } from "../beta.js";
+import { RESTART_RULE, TOKEN_FREE_LINE, TOKEN_SIGNUP_STEPS } from "../tokenless.js";
 
 export function registerContextTool(server: McpServer, ctx: ServerContext): void {
   defineTool(
@@ -14,6 +15,7 @@ export function registerContextTool(server: McpServer, ctx: ServerContext): void
         "Show which Gameye environment and host this server targets, the server version and the guardrail defaults. The environment is fixed when the server starts (GAMEYE_ENV / GAMEYE_API_URL) and cannot be changed by a tool call.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
+      requiresToken: false,
     },
     async () =>
       [
@@ -22,6 +24,7 @@ export function registerContextTool(server: McpServer, ctx: ServerContext): void
         `Host:           ${ctx.host}`,
         `Base URL:       ${ctx.baseUrl}`,
         `Server version: gameye-mcp ${ctx.version}`,
+        `Token: ${ctx.hasToken ? "configured" : "not configured"}`,
         "",
         "Guardrail defaults:",
         `  Session TTL:   ${DEFAULT_SESSION_TTL} when a launch gives no ttl`,
@@ -34,7 +37,12 @@ export function registerContextTool(server: McpServer, ctx: ServerContext): void
         `  Launches:        ${ctx.limits.maxLaunches} per server run (GAMEYE_MAX_LAUNCHES)`,
         `  Stop:            ${ctx.limits.stopOwnOnly ? "only sessions this server launched (GAMEYE_STOP_OWN_ONLY=1)" : "any session the token can see, by exact ID"}`,
         "",
-        "Token scopes: not introspectable. The Gameye API has no endpoint that reports a token's scopes; a call that needs a missing scope fails with 403 and names the required scope.",
+        ...(ctx.hasToken
+          ? [
+              "Token scopes: not introspectable. The Gameye API has no endpoint that reports a token's scopes; a call that needs a missing scope fails with 403 and names the required scope.",
+            ]
+          : ["No API token: account tools refuse and send nothing until a token is set.", TOKEN_FREE_LINE, TOKEN_SIGNUP_STEPS]),
+        RESTART_RULE,
         ctx.environment === "custom"
           ? "This server uses a non-standard GAMEYE_API_URL."
           : "To target the other environment, configure a second server entry with a different GAMEYE_ENV.",

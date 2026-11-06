@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { registerContextTool } from "../../src/tools/context.js";
-import { makeMockServer, makeContext, getText } from "./helpers.js";
+import { makeMockServer, makeContext, getText, NO_TOKEN_SANDBOX_PREFIX } from "./helpers.js";
+import { TOKEN_FREE_TOOLS } from "../../src/tokenless.js";
 import { BETA_NOTICE } from "../../src/beta.js";
 
 async function contextText(): Promise<string> {
@@ -54,5 +55,24 @@ describe("gameye_context", () => {
     expect(text).toMatch(/Launches:\s+20 per server run \(GAMEYE_MAX_LAUNCHES\)/);
     expect(text).toMatch(/Stop:\s+any session the token can see, by exact ID/);
     expect(text).toMatch(/Token expiry:\s+24h when gameye_create_token gives no expires_after/);
+  });
+
+  it("reports a configured token without any part of it", async () => {
+    const text = await contextText();
+    expect(text).toMatch(/^Token:\s+configured$/m);
+    expect(text).toMatch(/scopes: not introspectable/i);
+    expect(text).toMatch(/restart/i);
+  });
+
+  it("reports no token, the token-free tools and the restart rule", async () => {
+    const mock = makeMockServer();
+    registerContextTool(mock.server, makeContext({ hasToken: false }));
+    const text = getText(await mock.handlers["gameye_context"]({}));
+    expect(text.split("\n")[0]).toBe(NO_TOKEN_SANDBOX_PREFIX);
+    expect(text).toMatch(/^Token:\s+not configured$/m);
+    for (const tool of TOKEN_FREE_TOOLS) expect(text).toContain(tool);
+    expect(text).toMatch(/restart or reconnect/i);
+    expect(text).toContain("trial.gameye.com");
+    expect(text).not.toMatch(/scopes: not introspectable/i);
   });
 });

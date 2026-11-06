@@ -44,6 +44,7 @@ export function makeContext(overrides: Partial<ServerContext> = {}): ServerConte
 }
 
 export const SANDBOX_PREFIX = "[sandbox · api.sandbox-gameye.gameye.net]";
+export const NO_TOKEN_SANDBOX_PREFIX = "[sandbox · api.sandbox-gameye.gameye.net · no token]";
 export const PRODUCTION_PREFIX = "[production · api.production-gameye.gameye.net]";
 
 export function makeProductionContext(): ServerContext {

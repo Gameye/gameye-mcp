@@ -232,6 +232,6 @@ export function loadConfigOrExit(env: Record<string, string | undefined> = proce
 }
 
 /** The line every tool result starts with, e.g. `[sandbox · api.sandbox-gameye.gameye.net]`. */
-export function resultPrefix(config: { environment: EnvironmentLabel; host: string }): string {
-  return `[${config.environment} · ${config.host}]`;
+export function resultPrefix(config: { environment: EnvironmentLabel; host: string; hasToken?: boolean }): string {
+  return `[${config.environment} · ${config.host}${config.hasToken === false ? " · no token" : ""}]`;
 }
