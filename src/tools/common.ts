@@ -4,6 +4,7 @@ import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/
 import { GameyeError, GameyeTimeoutError, redactLabels } from "../client.js";
 import { resultPrefix, type EnvironmentLabel, type SessionLimits } from "../env.js";
 import { GuardError } from "../guards.js";
+import { describeTokenNeed, tokenRequiredMessage } from "../tokenless.js";
 
 /** Shared `dryRun` input for every tool that sends a write. */
 export const dryRunInput = z
@@ -17,6 +18,8 @@ export interface ServerContext {
   host: string;
   baseUrl: string;
   version: string;
+  /** Whether an API token is configured. The context never holds the token itself. */
+  hasToken: boolean;
   /** Local launch and stop limits, fixed when the server starts. */
   limits: SessionLimits;
   /** Replace the API token with `***`. Applied to every tool result, success or error. */
@@ -33,6 +36,11 @@ export interface ToolDefinition<Shape extends z.ZodRawShape> {
   annotations: ToolAnnotations;
   /** Extra hint appended to the error text for a GameyeError, e.g. for a 404. */
   errorHint?: (err: GameyeError) => string | undefined;
+  /**
+   * Whether the tool needs GAMEYE_API_TOKEN. Defaults to true, so a new tool
+   * fails closed: with no token it refuses before its handler runs.
+   */
+  requiresToken?: boolean;
 }
 
 /**
@@ -40,7 +48,10 @@ export interface ToolDefinition<Shape extends z.ZodRawShape> {
  * has the API token masked (log output, labels and error messages can echo
  * it), and every failure comes back as `isError: true` with the server's details
  * and trace ID instead of being thrown. A GuardError (a refusal before any
- * request) comes back as `isError: true` with its message.
+ * request) comes back as `isError: true` with its message. With no token
+ * configured, a tool that requires one is refused before its handler runs, so
+ * no request (and no dry run or limit check) happens. The description gains
+ * the sentence that says whether the tool works without a token.
  */
 export function defineTool<Shape extends z.ZodRawShape>(
   server: McpServer,
@@ -49,6 +60,7 @@ export function defineTool<Shape extends z.ZodRawShape>(
   def: ToolDefinition<Shape>,
   handler: (args: z.infer<z.ZodObject<Shape>>) => Promise<ToolOutput>
 ): void {
+  const requiresToken = def.requiresToken !== false;
   const prefix = resultPrefix(ctx);
   const wrap = (text: string, isError?: boolean): CallToolResult => ({
     content: [{ type: "text", text: ctx.mask(`${prefix}\n${text}`) }],
@@ -57,6 +69,7 @@ export function defineTool<Shape extends z.ZodRawShape>(
 
   const callback = async (args: z.infer<z.ZodObject<Shape>>): Promise<CallToolResult> => {
     try {
+      if (requiresToken && !ctx.hasToken) throw new GuardError(tokenRequiredMessage(name));
       const out = await handler(args);
       return typeof out === "string" ? wrap(out) : wrap(out.text, out.isError);
     } catch (err) {
@@ -74,7 +87,7 @@ export function defineTool<Shape extends z.ZodRawShape>(
     name,
     {
       title: def.title,
-      description: def.description,
+      description: describeTokenNeed(def.description, requiresToken),
       inputSchema: def.inputSchema,
       annotations: def.annotations,
     },

@@ -4,13 +4,16 @@
 //
 // GAMEYE_MCP_SMOKE_CMD overrides the launch command, as a JSON array, so the
 // same test checks an installed package or the Docker image, for example
-// ["gameye-mcp"] or ["docker","run","-i","--rm","-e","GAMEYE_API_TOKEN","<image>"].
+// ["gameye-mcp"] or ["docker","run","-i","--rm","-e","GAMEYE_API_TOKEN","-e","GAMEYE_ENV","<image>"].
 // The token is a dummy: initialize and tools/list never call the Gameye API.
+// Variables a run leaves unset are removed from the child environment, so a
+// Docker `-e NAME` forwards nothing for them.
 
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { GameyeClient } from "../../src/client.js";
+import { NO_TOKEN_NOTICE } from "../../src/env.js";
 import { registerAllTools } from "../../src/tools/register.js";
 import { VERSION } from "../../src/version.js";
 import { makeContext, makeMockServer } from "../unit/helpers.js";
@@ -32,10 +35,12 @@ function nonEmptyLines(text: string): string[] {
 }
 
 /** Writes the messages, closes stdin once every request has a reply, and waits for the server to exit. */
-function run(messages: object[], token: string | undefined, timeoutMs = 30_000): Promise<Run> {
+function run(messages: object[], token: string | undefined, extraEnv: Record<string, string> = {}, timeoutMs = 30_000): Promise<Run> {
   const env = { ...process.env };
   delete env.GAMEYE_API_TOKEN;
+  delete env.GAMEYE_ENV;
   if (token !== undefined) env.GAMEYE_API_TOKEN = token;
+  Object.assign(env, extraEnv);
   const expectedReplies = messages.filter((m) => "id" in m).length;
   return new Promise((resolve, reject) => {
     const child = spawn(command[0], command.slice(1), { cwd: repoRoot, env });
@@ -64,7 +69,7 @@ function run(messages: object[], token: string | undefined, timeoutMs = 30_000):
       clearTimeout(timer);
       resolve({ stdout, stderr, code, exitAfterStdinCloseMs: stdinClosedAt ? Date.now() - stdinClosedAt : 0 });
     });
-    child.stdin.on("error", () => {}); // the server may exit before reading, e.g. without a token
+    child.stdin.on("error", () => {}); // the server may exit before reading, e.g. on a configuration error
     child.stdin.write(messages.map((m) => JSON.stringify(m)).join("\n") + "\n");
   });
 }
@@ -108,10 +113,48 @@ describe(`stdio smoke: ${command.join(" ")}`, () => {
     expect(session.exitAfterStdinCloseMs).toBeLessThan(5_000);
   });
 
-  it("refuses to start without GAMEYE_API_TOKEN, naming it on stderr only", async () => {
-    const result = await run(handshake, undefined);
+  it("does not print the no-token notice when a token is set", () => {
+    expect(session.stderr).not.toContain(NO_TOKEN_NOTICE);
+  });
+});
+
+describe(`stdio smoke without a token: ${command.join(" ")}`, () => {
+  let session: Run;
+  beforeAll(async () => {
+    session = await run(handshake, undefined);
+  });
+
+  it("starts, completes the handshake and lists the same tools", () => {
+    const messages = nonEmptyLines(session.stdout).map((line) => JSON.parse(line)); // throws on any non-JSON stdout
+    for (const m of messages) expect(m.jsonrpc).toBe("2.0");
+
+    const init = messages.find((m) => m.id === 1);
+    expect(init.result.serverInfo).toEqual({ name: "gameye", version: VERSION });
+
+    const tools = messages.find((m) => m.id === 2).result.tools.map((t: { name: string }) => t.name).sort();
+    expect(tools).toEqual(registeredToolNames());
+  });
+
+  it("prints the no-token notice on stderr only", () => {
+    expect(session.stderr).toContain("running on stdio");
+    expect(session.stderr).toContain(NO_TOKEN_NOTICE);
+    expect(session.stdout).not.toContain(NO_TOKEN_NOTICE);
+  });
+
+  it("exits cleanly when the client closes stdin", () => {
+    expect(session.code).toBe(0);
+  });
+
+  it("treats an unexpanded host placeholder as no token", async () => {
+    const result = await run(handshake, "${user_config.api_token}");
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain(NO_TOKEN_NOTICE);
+  });
+
+  it("still refuses to start on an invalid GAMEYE_ENV, naming it on stderr only", async () => {
+    const result = await run(handshake, undefined, { GAMEYE_ENV: "staging" });
     expect(result.code).not.toBe(0);
-    expect(result.stderr).toContain("GAMEYE_API_TOKEN");
+    expect(result.stderr).toContain("GAMEYE_ENV must be one of");
     expect(result.stdout).toBe("");
   });
 });

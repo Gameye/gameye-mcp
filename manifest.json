@@ -28,9 +28,9 @@
     "api_token": {
       "type": "string",
       "title": "Gameye API token",
-      "description": "Create one in the Gameye Admin Panel under Users, API tokens. Use the least-privileged scopes you need.",
+      "description": "Optional. Without it the server runs its offline tools (bundled skills, Dockerfile check, server context) and account tools return setup steps. Create one in the Gameye Admin Panel under Users, API tokens, with the least-privileged scopes you need.",
       "sensitive": true,
-      "required": true
+      "required": false
     },
     "environment": {
       "type": "string",
@@ -59,7 +59,11 @@
     { "name": "gameye_create_application", "description": "Create an application" },
     { "name": "gameye_edit_application", "description": "Change an application" },
     { "name": "gameye_create_token", "description": "Create an API token and write it to a file" },
-    { "name": "gameye_update_skills", "description": "Check and update the installed Gameye agent skills" }
+    { "name": "gameye_update_skills", "description": "Check and update the installed Gameye agent skills" },
+    { "name": "gameye_list_skills", "description": "List the Gameye agent skills bundled with this server (no token needed)" },
+    { "name": "gameye_get_skill", "description": "Read a bundled Gameye skill or reference file (no token needed)" },
+    { "name": "gameye_get_template", "description": "Get the published Dockerfile or shutdown-hook template for an Unreal, Unity, Godot or web server (no token needed)" },
+    { "name": "gameye_check_dockerfile", "description": "Check a game server Dockerfile against the Gameye container contract, offline (no token needed)" }
   ],
   "compatibility": {
     "platforms": ["darwin", "win32", "linux"],

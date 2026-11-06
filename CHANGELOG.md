@@ -2,6 +2,17 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## 0.5.0 (unreleased)
+
+- No-token mode: the server starts without `GAMEYE_API_TOKEN`, prints one line on stderr saying so, and registers the same tools. **Behaviour change:** the server no longer exits when `GAMEYE_API_TOKEN` is unset; an invalid `GAMEYE_ENV` or other configuration error still stops it. A token setting left as an unexpanded `${user_config.api_token}` placeholder counts as no token.
+- With no token, every account tool, `dryRun` calls included, sends nothing and returns an error that starts with `Token required:`, followed by where to get a token (trial.gameye.com, then Users → API tokens in the Admin Panel), the narrowest scope recipe for that tool, how to set the token for each install path, the restart rule, and the tools that work now. Only `gameye_context`, `gameye_update_skills`, `gameye_list_skills`, `gameye_get_skill` and `gameye_check_dockerfile` work without a token; a new tool needs one unless it opts out.
+- Tool results show `· no token` after the host when no token is configured, and `gameye_context` reports `Token: configured` or `Token: not configured`, never any part of the token.
+- New `gameye_list_skills` and `gameye_get_skill` serve a pinned copy of the Gameye skills (gameye-skills `v1.7.0`, named in `skills.pin`) bundled with the server, offline. `npm run sync-skills` regenerates it and `npm run check-skills` fails CI on drift.
+- New `gameye_get_template` returns the Dockerfile or shutdown-hook template for an Unreal, Unity, Godot or web server, taken byte for byte from the bundled skill (gameye-skills v1.7.0, which also fixes Godot shutdown handling).
+- New `gameye_check_dockerfile` checks Dockerfile text against the gameye-containerize container contract, offline: amd64 base, `EXPOSE`d ports, exec-form launch without `npm start`, no loopback bind, a non-root user, and no API token or credential in `ENV`/`ARG` (flagged values are redacted).
+- The instructions sent to connecting clients depend on the token: with none, they open by naming the tools that work and the skill to read first; with one, they add a line naming the bundled skill tools to the beta notice. Each tool description says whether it works without a token.
+- `manifest.json` (`api_token`) and `server.json` (`GAMEYE_API_TOKEN`, npm and OCI packages) mark the token optional.
+
 ## 0.4.0
 
 - Session limits, enforced by the server before a launch is sent. By default: at most 5 sessions launched by this server running at once (`GAMEYE_MAX_SESSIONS`), a TTL of at most `4h` (`GAMEYE_MAX_TTL`), and 20 launches per server run (`GAMEYE_MAX_LAUNCHES`). A refusal says which limit applied. If the server can't list its sessions to check, the launch is refused. **Behaviour change:** a launch with a `ttl` above `4h`, or `ttl: "0"`, is now refused unless `GAMEYE_MAX_TTL` is raised.

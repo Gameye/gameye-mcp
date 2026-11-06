@@ -18,8 +18,8 @@
       "environmentVariables": [
         {
           "name": "GAMEYE_API_TOKEN",
-          "description": "Gameye API token. Use the least-privileged scopes you need.",
-          "isRequired": true,
+          "description": "Optional Gameye API token. Without it the server runs its offline tools and account tools return setup steps. Use the least-privileged scopes you need.",
+          "isRequired": false,
           "isSecret": true,
           "format": "string"
         },
@@ -40,8 +40,8 @@
       "environmentVariables": [
         {
           "name": "GAMEYE_API_TOKEN",
-          "description": "Gameye API token. Use the least-privileged scopes you need.",
-          "isRequired": true,
+          "description": "Optional Gameye API token. Without it the server runs its offline tools and account tools return setup steps. Use the least-privileged scopes you need.",
+          "isRequired": false,
           "isSecret": true,
           "format": "string"
         },

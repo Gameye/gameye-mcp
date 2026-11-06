@@ -33,4 +33,9 @@ describe("manifest.json", () => {
     expect(manifest.user_config.api_token.sensitive).toBe(true);
     expect(manifest.user_config.environment.default).toBe("sandbox");
   });
+
+  it("lets the token be left empty, so the server starts in no-token mode", () => {
+    expect(manifest.user_config.api_token.required).toBe(false);
+    expect(manifest.user_config.api_token.description).toMatch(/optional/i);
+  });
 });

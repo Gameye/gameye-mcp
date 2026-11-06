@@ -1,0 +1,6 @@
+FROM debian:bookworm-slim
+RUN groupadd --system --gid 10001 game && useradd --system --uid 10001 --gid game game
+WORKDIR /server
+COPY --chown=game:game build/ /server/
+USER game
+ENTRYPOINT ["/server/game-server", "--port", "7777"]

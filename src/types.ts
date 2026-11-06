@@ -219,6 +219,7 @@ export interface CreateTokenRequest {
 // ─── Client config ────────────────────────────────────────────────────────────
 
 export interface GameyeClientConfig {
+  /** API token; empty in no-token mode, where the tool gate keeps every request from being sent. */
   token: string;
   baseUrl: string;
   /** Default per-request timeout in milliseconds. Logs and artifacts get at least 60s and 120s. */

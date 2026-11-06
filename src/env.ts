@@ -23,8 +23,10 @@ export interface ResolvedConfig {
   baseUrl: string;
   /** Hostname only, for display. */
   host: string;
-  /** API token. Never print or return this. */
-  token: string;
+  /** API token, absent in no-token mode. Never print or return this. */
+  token?: string;
+  /** True when a usable token is configured. Derived from `token`; safe to show. */
+  hasToken: boolean;
   /** Default per-request timeout in milliseconds (GAMEYE_TIMEOUT_MS, default 30s). */
   timeoutMs: number;
   /** Local launch and stop limits (GAMEYE_MAX_SESSIONS, GAMEYE_MAX_TTL, GAMEYE_MAX_LAUNCHES, GAMEYE_STOP_OWN_ONLY). */
@@ -71,6 +73,23 @@ function nonEmpty(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
 }
+
+/** A whole value like `${user_config.api_token}`: a host placeholder that was never filled in. */
+const UNEXPANDED_PLACEHOLDER = /^\$\{[^}]*\}$/;
+
+/**
+ * The configured token, or undefined when it is missing, blank or an unexpanded
+ * host placeholder. Any of those starts the server in no-token mode.
+ */
+function resolveToken(raw: string | undefined): string | undefined {
+  const value = nonEmpty(raw);
+  if (value === undefined || UNEXPANDED_PLACEHOLDER.test(value)) return undefined;
+  return value;
+}
+
+/** The one stderr line printed at start in no-token mode. Never mentions a token value. */
+export const NO_TOKEN_NOTICE =
+  "No GAMEYE_API_TOKEN set: account tools will refuse until a token is set and the server is restarted.";
 
 function parseTimeoutMs(raw: string | undefined): number {
   const value = nonEmpty(raw);
@@ -137,15 +156,11 @@ function matchKnownTier(url: URL): Tier | undefined {
 /**
  * Resolve the server configuration from an environment object.
  * Pure: throws ConfigError on any invalid combination and never touches process state.
+ * A missing token is not an error: it resolves with `hasToken: false`.
  */
 export function resolveConfig(env: Record<string, string | undefined>): ResolvedConfig {
-  const token = nonEmpty(env.GAMEYE_API_TOKEN);
-  if (!token) {
-    throw new ConfigError(
-      "GAMEYE_API_TOKEN is required. Set it in your MCP server configuration:\n" +
-        '  "env": { "GAMEYE_API_TOKEN": "<your token>" }'
-    );
-  }
+  const token = resolveToken(env.GAMEYE_API_TOKEN);
+  const auth = token === undefined ? { hasToken: false } : { token, hasToken: true };
 
   if (nonEmpty(env.GAMEYE_API_ENDPOINT)) {
     throw new ConfigError(
@@ -171,7 +186,7 @@ export function resolveConfig(env: Record<string, string | undefined>): Resolved
   const rawUrl = nonEmpty(env.GAMEYE_API_URL);
   if (rawUrl === undefined) {
     const baseUrl = KNOWN_HOSTS[tier];
-    return { environment: tier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs, limits };
+    return { environment: tier, baseUrl, host: new URL(baseUrl).host, ...auth, timeoutMs, limits };
   }
 
   let url: URL;
@@ -196,11 +211,11 @@ export function resolveConfig(env: Record<string, string | undefined>): Resolved
       );
     }
     const baseUrl = KNOWN_HOSTS[knownTier];
-    return { environment: knownTier, baseUrl, host: new URL(baseUrl).host, token, timeoutMs, limits };
+    return { environment: knownTier, baseUrl, host: new URL(baseUrl).host, ...auth, timeoutMs, limits };
   }
 
   const baseUrl = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
-  return { environment: "custom", baseUrl, host: url.host, token, timeoutMs, limits };
+  return { environment: "custom", baseUrl, host: url.host, ...auth, timeoutMs, limits };
 }
 
 /** Resolve from process.env, printing a clear message and exiting 1 on any error. */
@@ -217,6 +232,6 @@ export function loadConfigOrExit(env: Record<string, string | undefined> = proce
 }
 
 /** The line every tool result starts with, e.g. `[sandbox · api.sandbox-gameye.gameye.net]`. */
-export function resultPrefix(config: { environment: EnvironmentLabel; host: string }): string {
-  return `[${config.environment} · ${config.host}]`;
+export function resultPrefix(config: { environment: EnvironmentLabel; host: string; hasToken?: boolean }): string {
+  return `[${config.environment} · ${config.host}${config.hasToken === false ? " · no token" : ""}]`;
 }

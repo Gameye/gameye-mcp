@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { GameyeClient } from "../src/client.js";
 import { registerAllTools } from "../src/tools/register.js";
+import { TOKEN_FREE_TOOLS } from "../src/tokenless.js";
 import { makeContext, makeMockServer } from "./unit/helpers.js";
 
 const specDir = fileURLToPath(new URL("../spec/", import.meta.url));
@@ -16,7 +17,14 @@ const specDir = fileURLToPath(new URL("../spec/", import.meta.url));
 const EXCLUSIONS: Record<string, string> = {};
 
 /** Tools that intentionally map to no API operation. */
-const NON_API_TOOLS = new Set(["gameye_context", "gameye_update_skills"]);
+const NON_API_TOOLS = new Set([
+  "gameye_context",
+  "gameye_update_skills",
+  "gameye_list_skills",
+  "gameye_get_skill",
+  "gameye_get_template",
+  "gameye_check_dockerfile",
+]);
 
 function specOperationIds(): string[] {
   const text = readFileSync(`${specDir}client.yaml`, "utf8");
@@ -88,6 +96,12 @@ describe("MCP tool parity with the vendored client spec", () => {
     const mapped = new Set(Object.values(map).map((m) => m.tool));
     const extra = registeredTools().filter((t) => !mapped.has(t) && !NON_API_TOOLS.has(t));
     expect(extra).toEqual([]);
+  });
+
+  it("the token-free tools are exactly the non-API tools", () => {
+    expect([...TOKEN_FREE_TOOLS].sort()).toEqual([...NON_API_TOOLS].sort());
+    const mapped = new Set(Object.values(map).map((m) => m.tool));
+    expect(TOKEN_FREE_TOOLS.filter((t) => mapped.has(t))).toEqual([]);
   });
 
   it("fails, naming the operation, when a tool registration is removed", () => {

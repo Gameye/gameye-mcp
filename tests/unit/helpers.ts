@@ -36,6 +36,7 @@ export function makeContext(overrides: Partial<ServerContext> = {}): ServerConte
     host: "api.sandbox-gameye.gameye.net",
     baseUrl: "https://api.sandbox-gameye.gameye.net",
     version: "0.0.0-test",
+    hasToken: true,
     limits: DEFAULT_LIMITS,
     mask: (text: string) => text.split(TEST_TOKEN).join("***"),
     ...overrides,
@@ -43,6 +44,7 @@ export function makeContext(overrides: Partial<ServerContext> = {}): ServerConte
 }
 
 export const SANDBOX_PREFIX = "[sandbox · api.sandbox-gameye.gameye.net]";
+export const NO_TOKEN_SANDBOX_PREFIX = "[sandbox · api.sandbox-gameye.gameye.net · no token]";
 export const PRODUCTION_PREFIX = "[production · api.production-gameye.gameye.net]";
 
 export function makeProductionContext(): ServerContext {
