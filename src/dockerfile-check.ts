@@ -182,7 +182,7 @@ function parseExecForm(args: string): string[] | undefined {
 
 /** Parse `KEY=value KEY2="v w"` (or legacy `KEY value` for ENV) into pairs. */
 function parseAssignments(keyword: string, args: string): Array<{ name: string; value: string | undefined }> {
-  const legacy = /^([A-Za-z_][A-Za-z0-9_]*)\s+(?!\S*=)(.*)$/s.exec(args);
+  const legacy = /^([A-Za-z_][A-Za-z0-9_]*)\s+(.*)$/s.exec(args);
   if (keyword === "ENV" && legacy && !args.split(/\s+/)[0].includes("=")) {
     return [{ name: legacy[1], value: unquote(legacy[2].trim()) }];
   }
@@ -352,7 +352,8 @@ export function checkDockerfile(text: string, opts: { ports?: DeclaredPort[] } =
       add(
         "GC9-token-in-image",
         ins.line,
-        `${ins.keyword} ${name}${value === undefined ? "" : `=${MASK}`} puts ${gameye ? "a Gameye API token" : "a credential"} in the image or its build history.`,
+        // Only the fixed GAMEYE_API_TOKEN name is echoed: any other name is user text and may itself hold a token.
+        `${ins.keyword} ${gameye ? `GAMEYE_API_TOKEN${value === undefined ? "" : `=${MASK}`}` : "on this line"} puts ${gameye ? "a Gameye API token" : "a credential"} in the image or its build history.`,
         `Remove it from the Dockerfile. The Gameye API token belongs to your backend only; pass only short-lived per-match values in the session env. Rotate the token if this was ever pushed. See ${SKILL}.`
       );
     }

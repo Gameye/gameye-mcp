@@ -90,7 +90,8 @@ let commit;
 try {
   const checkout = join(tmp, "gameye-skills");
   try {
-    git(["-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", tag, cloneFrom, checkout]);
+    // core.autocrlf=false keeps the committed bytes, so a Windows checkout bundles the same text.
+    git(["-c", "advice.detachedHead=false", "-c", "core.autocrlf=false", "clone", "--quiet", "--depth", "1", "--branch", tag, cloneFrom, checkout]);
     commit = git(["rev-parse", "HEAD^{commit}"], checkout);
   } catch (err) {
     fail(`could not check out ${tag} from ${source}: ${(err.stderr || err.message).toString().trim()}`);

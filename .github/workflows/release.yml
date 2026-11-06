@@ -62,6 +62,8 @@ jobs:
         run: gitleaks detect --source . --redact --no-banner --verbose
 
       - run: npm ci
+      - name: Bundled skills match the gameye-skills tag in skills.pin
+        run: npm run check-skills
       - run: npm test
       - run: npx tsc --noEmit -p tsconfig.test.json
       - run: npm run build

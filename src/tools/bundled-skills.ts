@@ -85,7 +85,8 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
       const nameProblem = unsafeReason(name) ?? (/[\\/]/.test(name) ? "a path" : undefined);
       if (nameProblem) return refuse(`Refused: the skill name is ${nameProblem}. Use one of: ${skillNames()}.`);
       const skill = BUNDLED_SKILLS.find((s) => s.name === name);
-      if (!skill) return refuse(`No bundled skill named "${name}". Bundled skills: ${skillNames()}.`);
+      // Never echo the supplied name or file: it is user text and may be a pasted token.
+      if (!skill) return refuse(`No bundled skill has that name. Bundled skills: ${skillNames()}.`);
 
       const rel = file ?? SKILL_FILE;
       const fileProblem = unsafeReason(rel);
@@ -93,7 +94,7 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
         return refuse(`Refused: the file is ${fileProblem}. Files in ${skill.name}: ${filesOf(skill).join(", ")}.`);
       }
       if (!Object.hasOwn(skill.files, rel)) {
-        return refuse(`No file "${rel}" in the bundled ${skill.name} skill. Files: ${filesOf(skill).join(", ")}.`);
+        return refuse(`The bundled ${skill.name} skill has no such file. Files: ${filesOf(skill).join(", ")}.`);
       }
       return [BUNDLED_HEADER, `Skill: ${skill.name} ${skill.version} · ${rel}`, "", skill.files[rel]].join("\n");
     }

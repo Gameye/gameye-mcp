@@ -130,10 +130,21 @@ describe("gameye_get_skill", () => {
     expect(getText(res)).toMatch(reason);
   });
 
+  it("never echoes a supplied name or file back, so a pasted token cannot be reflected", async () => {
+    // Built at runtime so secret scanners do not flag a test fixture.
+    const secret = ["gh", "p_", "abcdefghijklmnopqrstuvwxyz0123456789"].join("");
+    for (const args of [{ name: secret }, { name: "gameye", file: secret }, { name: "gameye", file: `references/${secret}.md` }]) {
+      const res = await tools().get(args);
+      expect(res.isError).toBe(true);
+      expect(getText(res)).not.toContain(secret);
+    }
+  });
+
   it("refuses an unknown skill and names the bundled ones", async () => {
     const res = await tools().get({ name: "gameye-nope" });
     expect(res.isError).toBe(true);
-    expect(getText(res)).toContain('No bundled skill named "gameye-nope"');
+    expect(getText(res)).toContain("No bundled skill has that name");
+    expect(getText(res)).not.toContain("gameye-nope");
     for (const skill of BUNDLED_SKILLS) expect(getText(res)).toContain(skill.name);
   });
 

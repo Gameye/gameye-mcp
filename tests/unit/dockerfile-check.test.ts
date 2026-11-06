@@ -228,3 +228,41 @@ describe("rule citations match the bundled container contract", () => {
     }
   });
 });
+
+describe("GC9 credential detection beyond GAMEYE_API_TOKEN", () => {
+  // Fixture values are built at runtime so secret scanners do not flag them.
+  const fake = (...parts: string[]) => parts.join("");
+  const GHP = fake("gh", "p_", "abcdefghijklmnopqrstuvwxyz0123");
+  const PW = fake("hunter2", "hunter2");
+  const KEY = fake("abc123", "def456");
+  const LEGACY = fake("s3cr3t", "value99");
+  const base = (lines: string) => `FROM ubuntu:24.04\n${lines}\nUSER game\nEXPOSE 7777/udp\nENTRYPOINT ["/server"]\n`;
+  const gc9 = (text: string) => checkDockerfile(base(text)).findings.filter((f) => f.code === "GC9-token-in-image");
+  const report = (text: string) => formatDockerfileReport(checkDockerfile(base(text)));
+
+  it.each([
+    [`ENV DB_PASSWORD=${PW}`, PW],
+    [`ARG API_KEY=${KEY}`, KEY],
+    [`ENV SECRET_KEY ${LEGACY}`, LEGACY],
+    [`ENV API_KEY ${KEY}==`, `${KEY}==`],
+    [`ENV FOO=${GHP}`, GHP],
+  ])("flags %s and never shows the value", (line, value) => {
+    expect(gc9(line)).toHaveLength(1);
+    expect(report(line)).not.toContain(value);
+  });
+
+  it("flags ARG GAMEYE_API_TOKEN with no value", () => {
+    expect(gc9("ARG GAMEYE_API_TOKEN")).toHaveLength(1);
+  });
+
+  it("does not flag a variable reference", () => {
+    expect(gc9("ENV TOKEN=${BUILD_TOKEN}")).toHaveLength(0);
+  });
+
+  it("never echoes a variable name that is itself credential-shaped", () => {
+    const secret = GHP;
+    const text = `ARG ${secret}_TOKEN=zzzzqqqq`;
+    expect(gc9(text)).toHaveLength(1);
+    expect(report(text)).not.toContain(secret);
+  });
+});
