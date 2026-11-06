@@ -210,11 +210,11 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Stdio smoke test (amd64)
         env:
-          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/amd64","-e","GAMEYE_API_TOKEN","gameye-mcp:smoke-amd64"]'
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/amd64","-e","GAMEYE_API_TOKEN","-e","GAMEYE_ENV","gameye-mcp:smoke-amd64"]'
         run: npm run test:smoke
       - name: Stdio smoke test (arm64, emulated)
         env:
-          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/arm64","-e","GAMEYE_API_TOKEN","gameye-mcp:smoke-arm64"]'
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","--platform","linux/arm64","-e","GAMEYE_API_TOKEN","-e","GAMEYE_ENV","gameye-mcp:smoke-arm64"]'
         run: npm run test:smoke
 
   # Pushes amd64 + arm64 to GHCR with provenance and an SBOM, rebuilt from the

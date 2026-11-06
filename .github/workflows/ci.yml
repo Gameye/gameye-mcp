@@ -59,7 +59,7 @@ jobs:
         run: docker build -t gameye-mcp:ci .
       - name: Stdio smoke test against the image
         env:
-          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","-e","GAMEYE_API_TOKEN","gameye-mcp:ci"]'
+          GAMEYE_MCP_SMOKE_CMD: '["docker","run","-i","--rm","-e","GAMEYE_API_TOKEN","-e","GAMEYE_ENV","gameye-mcp:ci"]'
         run: npm run test:smoke
       - name: Image runs as a non-root user
         run: '[ "$(docker run --rm --entrypoint id gameye-mcp:ci -u)" != "0" ]'

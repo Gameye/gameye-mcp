@@ -17,6 +17,8 @@ export interface ServerContext {
   host: string;
   baseUrl: string;
   version: string;
+  /** Whether an API token is configured. The context never holds the token itself. */
+  hasToken: boolean;
   /** Local launch and stop limits, fixed when the server starts. */
   limits: SessionLimits;
   /** Replace the API token with `***`. Applied to every tool result, success or error. */

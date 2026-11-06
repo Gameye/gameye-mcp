@@ -36,6 +36,7 @@ export function makeContext(overrides: Partial<ServerContext> = {}): ServerConte
     host: "api.sandbox-gameye.gameye.net",
     baseUrl: "https://api.sandbox-gameye.gameye.net",
     version: "0.0.0-test",
+    hasToken: true,
     limits: DEFAULT_LIMITS,
     mask: (text: string) => text.split(TEST_TOKEN).join("***"),
     ...overrides,
