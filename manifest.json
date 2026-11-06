@@ -28,9 +28,9 @@
     "api_token": {
       "type": "string",
       "title": "Gameye API token",
-      "description": "Create one in the Gameye Admin Panel under Users, API tokens. Use the least-privileged scopes you need.",
+      "description": "Optional. Without it the server runs its offline tools (bundled skills, Dockerfile check, server context) and account tools return setup steps. Create one in the Gameye Admin Panel under Users, API tokens, with the least-privileged scopes you need.",
       "sensitive": true,
-      "required": true
+      "required": false
     },
     "environment": {
       "type": "string",

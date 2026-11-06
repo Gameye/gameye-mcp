@@ -18,6 +18,17 @@ export const TOKEN_FREE_TOOLS: readonly string[] = [
   "gameye_check_dockerfile",
 ];
 
+/** Every token-free tool description opens with this sentence. */
+export const TOKEN_FREE_LEAD = "Works without a Gameye account or token.";
+
+/** Every account tool description ends with this sentence. */
+export const ACCOUNT_TOOL_TAIL = "Needs GAMEYE_API_TOKEN; without one, returns setup steps and sends nothing.";
+
+/** A tool description with the sentence that says whether it needs a token. */
+export function describeTokenNeed(description: string, requiresToken: boolean): string {
+  return requiresToken ? `${description} ${ACCOUNT_TOOL_TAIL}` : `${TOKEN_FREE_LEAD} ${description}`;
+}
+
 export type ScopeRecipeName = "Observer" | "Operator" | "Deployer" | "Token admin";
 
 export interface ScopeRecipe {

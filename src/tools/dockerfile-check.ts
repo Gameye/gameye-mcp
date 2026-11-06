@@ -13,7 +13,7 @@ export function registerDockerfileCheckTool(server: McpServer, ctx: ServerContex
     {
       title: "Check Dockerfile",
       description:
-        "Check game server Dockerfile text against the gameye-containerize container contract, offline: linux/amd64 base, exposed ports and protocols, exec-form launch without npm/yarn start, no loopback bind, non-root user, and no API token or credential in ENV/ARG. Returns findings with severity, rule code, line, message and fix, plus what the check cannot know. Pass the Dockerfile text itself; this tool reads no files and sends nothing. Works without a Gameye account or token.",
+        "Check game server Dockerfile text against the gameye-containerize container contract, offline: linux/amd64 base, exposed ports and protocols, exec-form launch without npm/yarn start, no loopback bind, non-root user, and no API token or credential in ENV/ARG. Returns findings with severity, rule code, line, message and fix, plus what the check cannot know. Pass the Dockerfile text itself; this tool reads no files and sends nothing.",
       inputSchema: {
         dockerfile: z
           .string()

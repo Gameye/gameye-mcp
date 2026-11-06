@@ -39,6 +39,15 @@ describe("package.json", () => {
     expect(oci.identifier).toBe(`ghcr.io/gameye/gameye-mcp:${pkg.version}`);
   });
 
+  it("marks GAMEYE_API_TOKEN optional and secret in both server.json packages", () => {
+    for (const p of server.packages) {
+      const token = p.environmentVariables.find((v: { name: string }) => v.name === "GAMEYE_API_TOKEN");
+      expect(token.isRequired, p.registryType).toBe(false);
+      expect(token.isSecret, p.registryType).toBe(true);
+      expect(token.description, p.registryType).toMatch(/optional/i);
+    }
+  });
+
   it("labels the container image with the same registry name", () => {
     const dockerfile = readFileSync(new URL("../../Dockerfile", import.meta.url), "utf8");
     expect(dockerfile).toContain(`io.modelcontextprotocol.server.name="${pkg.mcpName}"`);

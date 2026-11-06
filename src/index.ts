@@ -24,7 +24,7 @@ const ctx: ServerContext = {
   mask: (text) => client.maskToken(text),
 };
 
-const server = createServer(version);
+const server = createServer(version, { hasToken: config.hasToken });
 
 registerAllTools(server, client, ctx);
 

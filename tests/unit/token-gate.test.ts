@@ -63,7 +63,7 @@ const VALID_ARGS: Record<string, Record<string, unknown>> = {
 };
 
 async function connect(hasToken: boolean) {
-  const server = createServer("0.0.0-test");
+  const server = createServer("0.0.0-test", { hasToken });
   const gameye = new GameyeClient({ token: hasToken ? TEST_TOKEN : "", baseUrl: makeContext().baseUrl });
   const ctx = makeContext({ hasToken, mask: (text: string) => gameye.maskToken(text) });
   registerAllTools(server, gameye, ctx);

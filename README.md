@@ -12,7 +12,22 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server for the [Game
 GAMEYE_API_TOKEN=<your-token> npx -y gameye-mcp
 ```
 
+No Gameye account yet? Start it without a token, `npx -y gameye-mcp`, and your agent can still read the bundled Gameye skills and check a Dockerfile. See [Without a token](#without-a-token).
+
 It needs Node.js 22 or newer. The server speaks MCP over stdio. Normally your MCP client starts it for you (see [Install](#install)), so you rarely need to run it by hand.
+
+## Without a token
+
+You can connect the server before you have a Gameye account. Leave `GAMEYE_API_TOKEN` out of any install below, and the server starts in no-token mode and prints one line on stderr saying so.
+
+- These tools work, and send nothing to the Gameye API: `gameye_context`, `gameye_list_skills` and `gameye_get_skill` (the Gameye skills bundled with the server), and `gameye_check_dockerfile`. `gameye_update_skills` works too, and reaches GitHub only when called.
+- Every other tool is an account tool. Without a token it sends nothing and returns an error that starts with `Token required:`, then gives the setup steps and the narrowest [token scopes](#token-scopes) for that tool. A `dryRun` call is refused the same way.
+- Every tool result shows `· no token` after the host, for example `[sandbox · api.sandbox-gameye.gameye.net · no token]`, and `gameye_context` reports `Token: not configured`.
+- The instructions the server sends to a connecting agent name the tools that work and tell it to read the `gameye` skill first, then the skill for the game's engine.
+
+To get a token, sign up at [trial.gameye.com](https://trial.gameye.com/?utm_source=github&utm_medium=readme&utm_campaign=gameye-mcp), then in the Gameye Admin Panel open **Users → API tokens** and create one. Self-serve accounts use the sandbox host, which is the server's default.
+
+Set the token where the server is configured: the `env` block of your MCP client's server entry, or `--env` when you add it with `claude mcp add`. The server reads `GAMEYE_API_TOKEN` once when it starts, so restart or reconnect it after you set or change the token. Never paste the token into the chat with your agent.
 
 ## Environments
 
@@ -29,7 +44,7 @@ The environment is a property of the server process. No tool takes an environmen
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `GAMEYE_API_TOKEN` | **Yes** | — | Gameye API token. Use the least-privileged scopes you need (see below). |
+| `GAMEYE_API_TOKEN` | No | — | Gameye API token. Use the least-privileged scopes you need (see [Token scopes](#token-scopes)). Without it the server starts in no-token mode: see [Without a token](#without-a-token). |
 | `GAMEYE_ENV` | No | `sandbox` | `sandbox` or `production`. Selects the API host. |
 | `GAMEYE_API_URL` | No | — | Overrides the host, for testing only. Must be `https`. If it equals one of the two known hosts, it must match `GAMEYE_ENV` or the server refuses to start. Any other URL is labelled `custom` in every tool result. |
 | `GAMEYE_ENABLE_SKILLS_UPDATE` | No | — | Set to `1` to let `gameye_update_skills` run the skills updaters with `apply: true`. Without it the tool only checks and lists the commands. |
@@ -133,29 +148,34 @@ Give the server a token with only the scopes it needs.
 
 ## Available tools
 
-Every tool result starts with the environment and host it used, for example `[sandbox · api.sandbox-gameye.gameye.net]`.
+Every tool result starts with the environment and host it used, for example `[sandbox · api.sandbox-gameye.gameye.net]`. With no token configured it ends with `· no token`: `[sandbox · api.sandbox-gameye.gameye.net · no token]`.
 
-| Tool | Kind | Description |
-|---|---|---|
-| `gameye_context` | read | Show the environment, host and server version this server targets, and the guardrail defaults (session TTL, `launched-by` label, token expiry) |
-| `gameye_launch_session` | write, `dryRun` | Start a containerized game server (billable). Default TTL and agent label applied; see [Guardrails](#guardrails) |
-| `gameye_list_sessions` | read | List running sessions (filterable; `all=true` for every status) |
-| `gameye_describe_session` | read | Get session details, ports and players |
-| `gameye_stop_session` | destructive, `dryRun` | Stop one session by its exact ID |
-| `gameye_player_join` | write | Register one or more players as joined |
-| `gameye_player_leave` | write | Remove one or more players from a session |
-| `gameye_get_locations` | read | List locations that can host an image right now |
-| `gameye_list_regions` | read | List the regions available to your organization |
-| `gameye_check_tag` | read | Check whether an image tag is available in a region |
-| `gameye_list_applications` | read | List your applications with registry, resources, regions and ports |
-| `gameye_list_registry_tags` | read | List an application's tags in its upstream registry (paged) |
-| `gameye_enable_tag` | write, `dryRun` | Enable an image tag for an application so Gameye preloads it |
-| `gameye_get_logs` | read | Fetch session logs |
-| `gameye_get_artifacts` | read | Download a file or directory from a session container as a tar archive |
-| `gameye_create_application` | write, `dryRun` | Create an application |
-| `gameye_edit_application` | destructive, `dryRun` | Change an application; omitted fields stay unchanged |
-| `gameye_create_token` | write, `dryRun` | Create an API token and write it to a file |
-| `gameye_update_skills` | read, or write with `apply` | Compare the installed [Gameye skills](https://github.com/gameye/gameye-skills) with the latest pack, and update them with `apply: true`. See [Keeping the skills current](#keeping-the-skills-current) |
+The Token column names the narrowest [token scope recipe](#token-scopes) each tool needs. Tools marked `none` work without a token.
+
+| Tool | Kind | Token | Description |
+|---|---|---|---|
+| `gameye_context` | read | none | Show the environment, host and server version this server targets, and the guardrail defaults (session TTL, `launched-by` label, token expiry) |
+| `gameye_launch_session` | write, `dryRun` | Operator | Start a containerized game server (billable). Default TTL and agent label applied; see [Guardrails](#guardrails) |
+| `gameye_list_sessions` | read | Observer | List running sessions (filterable; `all=true` for every status) |
+| `gameye_describe_session` | read | Observer | Get session details, ports and players |
+| `gameye_stop_session` | destructive, `dryRun` | Operator | Stop one session by its exact ID |
+| `gameye_player_join` | write | Operator | Register one or more players as joined |
+| `gameye_player_leave` | write | Operator | Remove one or more players from a session |
+| `gameye_get_locations` | read | Observer | List locations that can host an image right now |
+| `gameye_list_regions` | read | Observer | List the regions available to your organization |
+| `gameye_check_tag` | read | Observer | Check whether an image tag is available in a region |
+| `gameye_list_applications` | read | Observer | List your applications with registry, resources, regions and ports |
+| `gameye_list_registry_tags` | read | Observer | List an application's tags in its upstream registry (paged) |
+| `gameye_enable_tag` | write, `dryRun` | Deployer | Enable an image tag for an application so Gameye preloads it |
+| `gameye_get_logs` | read | Observer | Fetch session logs |
+| `gameye_get_artifacts` | read | Observer | Download a file or directory from a session container as a tar archive |
+| `gameye_create_application` | write, `dryRun` | Deployer | Create an application |
+| `gameye_edit_application` | destructive, `dryRun` | Deployer | Change an application; omitted fields stay unchanged |
+| `gameye_create_token` | write, `dryRun` | Token admin | Create an API token and write it to a file |
+| `gameye_update_skills` | read, or write with `apply` | none | Compare the installed [Gameye skills](https://github.com/gameye/gameye-skills) with the latest pack, and update them with `apply: true`. See [Keeping the skills current](#keeping-the-skills-current) |
+| `gameye_list_skills` | read | none | List the Gameye skills bundled with this server, with each skill's version and files |
+| `gameye_get_skill` | read | none | Read a bundled skill's `SKILL.md` or one of its reference files |
+| `gameye_check_dockerfile` | read | none | Check Dockerfile text against the [gameye-containerize](https://github.com/gameye/gameye-skills) container contract, offline: findings with severity, rule, line and fix, plus what the check cannot know |
 
 Every tool carries MCP annotations: read tools set `readOnlyHint`, `gameye_stop_session` and `gameye_edit_application` set `destructiveHint`, and every tool that calls the Gameye API sets `openWorldHint`.
 
@@ -207,6 +227,8 @@ A port with `tls: true` has TLS terminated by Gameye on the host. Set it with `g
 ## Agent skills
 
 To teach your agent how to integrate Gameye (session lifecycle, matchmaking, webhooks and more), install the sister project [gameye-skills](https://github.com/gameye/gameye-skills). The skills use these MCP tools when they are available, and fall back to plain HTTP when they aren't.
+
+The server also bundles a pinned copy of the skills, which an agent reads with `gameye_list_skills` and `gameye_get_skill`, with or without a token. If an installed copy is newer, it wins.
 
 ## Development
 

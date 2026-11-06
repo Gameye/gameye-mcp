@@ -46,7 +46,7 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
       title: "List the bundled Gameye skills",
       description:
         "List the Gameye agent skills bundled with this server: each skill's name, description, version and files, and the bundled pack version. " +
-        "Works offline and without a token. Read one with gameye_get_skill. If an installed copy of the Gameye skills is newer, it wins.",
+        "Works offline. Read one with gameye_get_skill. If an installed copy of the Gameye skills is newer, it wins.",
       inputSchema: {},
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       requiresToken: false,
@@ -69,7 +69,7 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
       title: "Read a bundled Gameye skill",
       description:
         "Read a Gameye agent skill bundled with this server: its SKILL.md, or one of its reference files. " +
-        "Works offline and without a token, and serves only the bundled copy (list names and files with gameye_list_skills). " +
+        "Works offline and serves only the bundled copy (list names and files with gameye_list_skills). " +
         "If an installed copy of the Gameye skills is newer, it wins.",
       inputSchema: {
         name: z.string().describe("Skill name, e.g. gameye or gameye-containerize"),
