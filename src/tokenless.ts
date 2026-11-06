@@ -15,6 +15,7 @@ export const TOKEN_FREE_TOOLS: readonly string[] = [
   "gameye_update_skills",
   "gameye_list_skills",
   "gameye_get_skill",
+  "gameye_check_dockerfile",
 ];
 
 export type ScopeRecipeName = "Observer" | "Operator" | "Deployer" | "Token admin";

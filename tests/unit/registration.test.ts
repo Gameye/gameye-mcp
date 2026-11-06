@@ -33,6 +33,7 @@ describe("registration through the real MCP SDK", () => {
     const client = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "gameye_check_dockerfile",
       "gameye_check_tag",
       "gameye_context",
       "gameye_create_application",
