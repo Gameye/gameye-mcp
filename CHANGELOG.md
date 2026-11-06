@@ -2,7 +2,7 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
-## 0.5.0 (unreleased)
+## 0.5.0
 
 - No-token mode: the server starts without `GAMEYE_API_TOKEN`, prints one line on stderr saying so, and registers the same tools. **Behaviour change:** the server no longer exits when `GAMEYE_API_TOKEN` is unset; an invalid `GAMEYE_ENV` or other configuration error still stops it. A token setting left as an unexpanded `${user_config.api_token}` placeholder counts as no token.
 - With no token, every account tool, `dryRun` calls included, sends nothing and returns an error that starts with `Token required:`, followed by where to get a token (trial.gameye.com, then Users → API tokens in the Admin Panel), the narrowest scope recipe for that tool, how to set the token for each install path, the restart rule, and the tools that work now. Only `gameye_context`, `gameye_update_skills`, `gameye_list_skills`, `gameye_get_skill` and `gameye_check_dockerfile` work without a token; a new tool needs one unless it opts out.
