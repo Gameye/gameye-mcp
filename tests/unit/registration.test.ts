@@ -53,6 +53,7 @@ describe("registration through the real MCP SDK", () => {
       "gameye_get_locations",
       "gameye_get_logs",
       "gameye_get_skill",
+      "gameye_get_template",
       "gameye_launch_session",
       "gameye_list_applications",
       "gameye_list_regions",

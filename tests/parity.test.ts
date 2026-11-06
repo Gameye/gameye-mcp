@@ -22,6 +22,7 @@ const NON_API_TOOLS = new Set([
   "gameye_update_skills",
   "gameye_list_skills",
   "gameye_get_skill",
+  "gameye_get_template",
   "gameye_check_dockerfile",
 ]);
 

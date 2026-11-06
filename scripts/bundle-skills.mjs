@@ -5,8 +5,10 @@
 // Input (JSON): { tag, commit, files: { "skills/<name>/SKILL.md": text,
 //   "skills/<name>/references/<file>.md": text, ... } }
 // Output: a TypeScript module with the pack constants, the skill index with
-// every file's text, and the numbered container-contract items from
-// gameye-containerize.
+// every file's text, the numbered container-contract items from
+// gameye-containerize, and the templates marked in each engine skill with
+// <!-- gameye-template: <engine>/<kind> --> ... <!-- /gameye-template -->.
+// Every engine and kind must be marked once, or the build fails.
 //
 // Usage: node scripts/bundle-skills.mjs < input.json > skills.ts
 
@@ -17,6 +19,13 @@ const PACK_VERSION_RE = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m;
 const FILE_RE = /^skills\/([a-z0-9][a-z0-9-]*)\/(SKILL\.md|references\/[A-Za-z0-9._-]+\.md)$/;
 const CONTRACT_SKILL = "gameye-containerize";
 const CONTRACT_HEADING = "## The container contract";
+
+const TEMPLATE_ENGINES = ["unreal", "unity", "godot", "web"];
+const TEMPLATE_KINDS = ["dockerfile", "shutdown-hook"];
+const TEMPLATE_OPEN_RE = /^<!-- gameye-template: (\S+?)\/(\S+) -->$/;
+const TEMPLATE_CLOSE = "<!-- /gameye-template -->";
+const FENCE_RE = /^(`{3,}|~{3,})(.*)$/;
+const HEADING_RE = /^#{1,6} +(.*?)[ \t#]*$/;
 
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -61,6 +70,119 @@ function extractContract(path, text) {
   return items.map(({ number, parts }) => ({ number, text: parts.join(" ") }));
 }
 
+const engineSkill = (engine) => `gameye-${engine}-server`;
+
+/** Whether `line` closes a fence opened with `open`: the same character, at least as many, nothing else. */
+function closes(line, open) {
+  const run = line.trim();
+  return run.length >= open.length && run === open[0].repeat(run.length);
+}
+
+/**
+ * Every marked template in one SKILL.md. A pair wraps exactly one fenced block
+ * and may hold prose beside it (the note), but no heading. Marker-like lines
+ * inside other fenced blocks are text, not markers.
+ */
+function extractTemplates(skill, text) {
+  const path = `skills/${skill}/SKILL.md`;
+  const lines = text.split("\n");
+  const found = [];
+  let section = "";
+  let fence; // the open fence outside a pair, e.g. "```"
+  let pair; // the pair being read
+
+  for (const [i, line] of lines.entries()) {
+    const at = `${path} line ${i + 1}`;
+    if (pair) {
+      if (pair.fence) {
+        if (closes(line, pair.fence)) {
+          pair.fence = undefined;
+          pair.fences += 1;
+        } else {
+          pair.code.push(line);
+        }
+        continue;
+      }
+      if (line === TEMPLATE_CLOSE) {
+        const id = `${pair.engine}/${pair.kind}`;
+        if (pair.fences !== 1) throw new Error(`${path}: template ${id} must wrap exactly one fenced block, found ${pair.fences}`);
+        if (pair.kind === "dockerfile" && pair.language !== "dockerfile") {
+          throw new Error(`${path}: template ${id} must be a dockerfile fence, found "${pair.language}"`);
+        }
+        const note = pair.note.join("\n").trim();
+        found.push({
+          engine: pair.engine,
+          kind: pair.kind,
+          skill,
+          section: pair.section,
+          language: pair.language,
+          code: pair.code.map((l) => `${l}\n`).join(""),
+          ...(note ? { note } : {}),
+        });
+        pair = undefined;
+        continue;
+      }
+      if (TEMPLATE_OPEN_RE.test(line)) throw new Error(`${at}: template ${pair.engine}/${pair.kind} is not closed before the next marker`);
+      if (HEADING_RE.test(line)) throw new Error(`${at}: template ${pair.engine}/${pair.kind} holds a heading; only a fenced block and a short note may sit inside a pair`);
+      const f = FENCE_RE.exec(line);
+      if (f) {
+        if (pair.fences > 0) throw new Error(`${path}: template ${pair.engine}/${pair.kind} must wrap exactly one fenced block, found more`);
+        pair.fence = f[1];
+        pair.language = f[2].trim();
+        continue;
+      }
+      pair.note.push(line);
+      continue;
+    }
+    if (fence) {
+      if (closes(line, fence)) fence = undefined;
+      continue;
+    }
+    const f = FENCE_RE.exec(line);
+    if (f) {
+      fence = f[1];
+      continue;
+    }
+    const h = HEADING_RE.exec(line);
+    if (h) {
+      section = h[1];
+      continue;
+    }
+    if (line === TEMPLATE_CLOSE) throw new Error(`${at}: closing template marker with no open marker`);
+    const m = TEMPLATE_OPEN_RE.exec(line);
+    if (m) {
+      const [, engine, kind] = m;
+      const id = `${engine}/${kind}`;
+      if (!TEMPLATE_ENGINES.includes(engine)) throw new Error(`${at}: template ${id} names unknown engine "${engine}" (expected ${TEMPLATE_ENGINES.join(", ")})`);
+      if (!TEMPLATE_KINDS.includes(kind)) throw new Error(`${at}: template ${id} names unknown kind "${kind}" (expected ${TEMPLATE_KINDS.join(", ")})`);
+      if (skill !== engineSkill(engine)) throw new Error(`${at}: template ${id} belongs in ${engineSkill(engine)}, not ${skill}`);
+      pair = { engine, kind, section, note: [], code: [], fences: 0, language: "" };
+    } else if (line.includes("gameye-template")) {
+      throw new Error(`${at}: malformed template marker; markers sit alone on their line as <!-- gameye-template: <engine>/<kind> --> and ${TEMPLATE_CLOSE}`);
+    }
+  }
+  if (pair) throw new Error(`${path}: template ${pair.engine}/${pair.kind} is not closed (unclosed marker; add ${TEMPLATE_CLOSE})`);
+  return found;
+}
+
+/** One template per engine and kind, in TEMPLATE_ENGINES x TEMPLATE_KINDS order. */
+function collectTemplates(index) {
+  const all = index.flatMap((s) => extractTemplates(s.name, s.files["SKILL.md"]));
+  const result = [];
+  for (const engine of TEMPLATE_ENGINES) {
+    for (const kind of TEMPLATE_KINDS) {
+      const matches = all.filter((t) => t.engine === engine && t.kind === kind);
+      const skill = engineSkill(engine);
+      if (matches.length === 0) {
+        throw new Error(`skills/${skill}/SKILL.md has no ${kind} template: mark it with <!-- gameye-template: ${engine}/${kind} --> ... ${TEMPLATE_CLOSE}`);
+      }
+      if (matches.length > 1) throw new Error(`skills/${skill}/SKILL.md marks template ${engine}/${kind} more than once`);
+      result.push(matches[0]);
+    }
+  }
+  return result;
+}
+
 export function bundleSkills(input) {
   const { tag, commit, files } = input ?? {};
   if (typeof tag !== "string" || !/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`tag must look like v1.2.3, got ${tag}`);
@@ -93,6 +215,7 @@ export function bundleSkills(input) {
   const contractPath = `skills/${CONTRACT_SKILL}/SKILL.md`;
   if (files[contractPath] === undefined) throw new Error(`${contractPath} is missing`);
   const contract = extractContract(contractPath, files[contractPath]);
+  const templates = collectTemplates(index);
 
   return `// Gameye skills pack, bundled for offline use.
 // Pack version: ${packVersion}
@@ -118,10 +241,24 @@ export interface ContainerContractItem {
   text: string;
 }
 
+export const TEMPLATE_ENGINES = ${JSON.stringify(TEMPLATE_ENGINES)} as const;
+export const TEMPLATE_KINDS = ${JSON.stringify(TEMPLATE_KINDS)} as const;
+export type TemplateEngine = (typeof TEMPLATE_ENGINES)[number];
+export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+
 export interface BundledTemplate {
-  engine: string;
-  kind: string;
-  text: string;
+  engine: TemplateEngine;
+  kind: TemplateKind;
+  /** The engine skill that publishes it, e.g. "gameye-godot-server". */
+  skill: string;
+  /** The heading of the section the markers sit in. */
+  section: string;
+  /** The fence's info string, e.g. "dockerfile". */
+  language: string;
+  /** The fenced block's content exactly as published, without the fence lines. */
+  code: string;
+  /** Prose inside the marker pair beside the fence, e.g. the engine version it was tested on. */
+  note?: string;
 }
 
 export const BUNDLED_SKILLS_PACK_VERSION = ${JSON.stringify(packVersion)};
@@ -132,8 +269,8 @@ export const BUNDLED_SKILLS: readonly BundledSkill[] = ${JSON.stringify(index, n
 
 export const CONTAINER_CONTRACT: readonly ContainerContractItem[] = ${JSON.stringify(contract, null, 2)};
 
-/** Template blocks marked <!-- gameye-template: engine/kind --> in the pinned skills. None are extracted yet. */
-export const BUNDLED_TEMPLATES: readonly BundledTemplate[] = [];
+/** Template blocks marked <!-- gameye-template: engine/kind --> in the pinned engine skills. */
+export const BUNDLED_TEMPLATES: readonly BundledTemplate[] = ${JSON.stringify(templates, null, 2)};
 `;
 }
 

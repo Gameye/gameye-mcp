@@ -33,7 +33,7 @@ describe("rule list", () => {
 });
 
 describe("golden Dockerfiles published in gameye-skills", () => {
-  it.each(["golden-unreal", "golden-unity", "golden-godot", "golden-web", "golden-containerize-multistage"])(
+  it.each(["golden-unreal", "golden-unity", "golden-godot", "golden-godot-1.7.0", "golden-web", "golden-containerize-multistage"])(
     "%s produces no findings",
     (name) => {
       expect(checkDockerfile(fixture(name)).findings).toEqual([]);

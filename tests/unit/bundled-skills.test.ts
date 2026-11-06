@@ -185,6 +185,12 @@ describe("scripts/sync-skills.mjs", () => {
     writeFileSync(join(repo, "skills", "gameye", "SKILL.md"), skill("gameye", `\nPack version: ${packVersion}\n`));
     writeFileSync(join(repo, "skills", "gameye", "references", "routing.md"), "# Routing\n");
     writeFileSync(join(repo, "skills", "gameye-containerize", "SKILL.md"), skill("gameye-containerize", "\n## The container contract\n\n1. **Run as non-root.**\n"));
+    for (const engine of ["unreal", "unity", "godot", "web"]) {
+      const name = `gameye-${engine}-server`;
+      const marked = (kind: string, lang: string) => `\n<!-- gameye-template: ${engine}/${kind} -->\n\`\`\`${lang}\n${engine} ${kind}\n\`\`\`\n<!-- /gameye-template -->\n`;
+      mkdirSync(join(repo, "skills", name), { recursive: true });
+      writeFileSync(join(repo, "skills", name, "SKILL.md"), skill(name, `${marked("shutdown-hook", "text")}${marked("dockerfile", "dockerfile")}`));
+    }
     git("init", "-q");
     git("add", ".");
     git("commit", "-q", "-m", "fixture");

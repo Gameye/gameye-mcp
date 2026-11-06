@@ -15,6 +15,7 @@ export const TOKEN_FREE_TOOLS: readonly string[] = [
   "gameye_update_skills",
   "gameye_list_skills",
   "gameye_get_skill",
+  "gameye_get_template",
   "gameye_check_dockerfile",
 ];
 

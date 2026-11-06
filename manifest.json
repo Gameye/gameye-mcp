@@ -62,6 +62,7 @@
     { "name": "gameye_update_skills", "description": "Check and update the installed Gameye agent skills" },
     { "name": "gameye_list_skills", "description": "List the Gameye agent skills bundled with this server (no token needed)" },
     { "name": "gameye_get_skill", "description": "Read a bundled Gameye skill or reference file (no token needed)" },
+    { "name": "gameye_get_template", "description": "Get the published Dockerfile or shutdown-hook template for an Unreal, Unity, Godot or web server (no token needed)" },
     { "name": "gameye_check_dockerfile", "description": "Check a game server Dockerfile against the Gameye container contract, offline (no token needed)" }
   ],
   "compatibility": {

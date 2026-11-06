@@ -14,6 +14,7 @@ import { registerArtifactTools } from "./artifacts.js";
 import { registerSkillsTools } from "./skills.js";
 import { registerBundledSkillsTools } from "./bundled-skills.js";
 import { registerDockerfileCheckTool } from "./dockerfile-check.js";
+import { registerTemplateTools } from "./templates.js";
 
 /** Register every tool. */
 export function registerAllTools(
@@ -33,5 +34,6 @@ export function registerAllTools(
   registerTokenTools(server, client, ctx);
   registerSkillsTools(server, ctx);
   registerBundledSkillsTools(server, ctx);
+  registerTemplateTools(server, ctx);
   registerDockerfileCheckTool(server, ctx);
 }

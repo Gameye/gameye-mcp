@@ -20,7 +20,7 @@ It needs Node.js 22 or newer. The server speaks MCP over stdio. Normally your MC
 
 You can connect the server before you have a Gameye account. Leave `GAMEYE_API_TOKEN` out of any install below, and the server starts in no-token mode and prints one line on stderr saying so.
 
-- These tools work, and send nothing to the Gameye API: `gameye_context`, `gameye_list_skills` and `gameye_get_skill` (the Gameye skills bundled with the server), and `gameye_check_dockerfile`. `gameye_update_skills` works too, and reaches GitHub only when called.
+- These tools work, and send nothing to the Gameye API: `gameye_context`, `gameye_list_skills` and `gameye_get_skill` (the Gameye skills bundled with the server), `gameye_get_template`, and `gameye_check_dockerfile`. `gameye_update_skills` works too, and reaches GitHub only when called.
 - Every other tool is an account tool. Without a token it sends nothing and returns an error that starts with `Token required:`, then gives the setup steps and the narrowest [token scopes](#token-scopes) for that tool. A `dryRun` call is refused the same way.
 - Every tool result shows `· no token` after the host, for example `[sandbox · api.sandbox-gameye.gameye.net · no token]`, and `gameye_context` reports `Token: not configured`.
 - The instructions the server sends to a connecting agent name the tools that work and tell it to read the `gameye` skill first, then the skill for the game's engine.
@@ -175,6 +175,7 @@ The Token column names the narrowest [token scope recipe](#token-scopes) each to
 | `gameye_update_skills` | read, or write with `apply` | none | Compare the installed [Gameye skills](https://github.com/gameye/gameye-skills) with the latest pack, and update them with `apply: true`. See [Keeping the skills current](#keeping-the-skills-current) |
 | `gameye_list_skills` | read | none | List the Gameye skills bundled with this server, with each skill's version and files |
 | `gameye_get_skill` | read | none | Read a bundled skill's `SKILL.md` or one of its reference files |
+| `gameye_get_template` | read | none | Get the Dockerfile or shutdown-hook template for an Unreal, Unity, Godot or web server, exactly as published in the bundled skill |
 | `gameye_check_dockerfile` | read | none | Check Dockerfile text against the [gameye-containerize](https://github.com/gameye/gameye-skills) container contract, offline: findings with severity, rule, line and fix, plus what the check cannot know |
 
 Every tool carries MCP annotations: read tools set `readOnlyHint`, `gameye_stop_session` and `gameye_edit_application` set `destructiveHint`, and every tool that calls the Gameye API sets `openWorldHint`.

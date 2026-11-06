@@ -40,6 +40,40 @@ const CONTAINERIZE = skill(
 `
 );
 
+const ENGINES = ["unreal", "unity", "godot", "web"] as const;
+const KINDS = ["dockerfile", "shutdown-hook"] as const;
+
+const DOCKERFILE_BLOCK = (engine: string) =>
+  `\`\`\`dockerfile\nFROM debian:bookworm-slim\nUSER game\nEXPOSE 7777/udp\nENTRYPOINT ["/server/${engine}"]\n\`\`\``;
+const HOOK_BLOCK = (engine: string) => `\`\`\`text\non SIGTERM: flush ${engine} and exit 0\n\`\`\``;
+
+/** An engine skill with both marked templates; the shutdown hook carries a prose note inside its pair. */
+const engineSkill = (engine: string) =>
+  skill(
+    `gameye-${engine}-server`,
+    "1.0.0",
+    `# ${engine}
+
+## Shutdown
+
+Wire the hook:
+
+<!-- gameye-template: ${engine}/shutdown-hook -->
+Tested on ${engine} 1.2.3; rerun the drain test after an upgrade.
+
+${HOOK_BLOCK(engine)}
+<!-- /gameye-template -->
+
+## Container specifics
+
+<!-- gameye-template: ${engine}/dockerfile -->
+${DOCKERFILE_BLOCK(engine)}
+<!-- /gameye-template -->
+
+Prose after the pair.
+`
+  );
+
 const INPUT: BundleInput = {
   tag: "v1.6.1",
   commit: "b1927e7c6d2397cfbc87cbbb03d9ac128225b515",
@@ -48,9 +82,42 @@ const INPUT: BundleInput = {
     "skills/gameye/references/routing.md": "# Routing\n",
     "skills/gameye-containerize/SKILL.md": CONTAINERIZE,
     "skills/gameye-containerize/references/registries.md": "# Registries\n",
-    "skills/gameye-web-server/SKILL.md": skill("gameye-web-server", "1.0.0", "# Web\n"),
+    ...Object.fromEntries(ENGINES.map((e) => [`skills/gameye-${e}-server/SKILL.md`, engineSkill(e)])),
   },
 };
+
+interface ExtractedTemplate {
+  engine: string;
+  kind: string;
+  skill: string;
+  section: string;
+  language: string;
+  code: string;
+  note?: string;
+}
+
+/** BUNDLED_TEMPLATES from the generated module, parsed back from its JSON literal. */
+function templatesOf(out: string): ExtractedTemplate[] {
+  const m = /export const BUNDLED_TEMPLATES: readonly BundledTemplate\[\] = (\[[\s\S]*?\n\]);\n/.exec(out);
+  if (!m) throw new Error("no BUNDLED_TEMPLATES literal");
+  return JSON.parse(m[1]);
+}
+
+/** INPUT with one engine skill's text changed. */
+function withSkill(engine: string, edit: (text: string) => string): BundleInput {
+  const path = `skills/gameye-${engine}-server/SKILL.md`;
+  return { ...INPUT, files: { ...INPUT.files, [path]: edit(INPUT.files[path]) } };
+}
+
+/** The transform's stderr when it refuses `input`. */
+function refusal(input: BundleInput): string {
+  try {
+    bundle(input);
+  } catch (err) {
+    return String((err as { stderr?: string }).stderr);
+  }
+  throw new Error("bundle did not fail");
+}
 
 /** The same files, inserted in a different order. */
 function shuffled(input: BundleInput): BundleInput {
@@ -85,7 +152,7 @@ describe("bundle-skills", () => {
   it("indexes every skill with its frontmatter, sorted by name, and keeps SKILL.md and reference text", () => {
     const out = bundle(INPUT);
     const names = [...out.matchAll(/^ {4}"name": "([^"]+)"/gm)].map((m) => m[1]);
-    expect(names).toEqual(["gameye", "gameye-containerize", "gameye-web-server"]);
+    expect(names).toEqual(["gameye", "gameye-containerize", "gameye-godot-server", "gameye-unity-server", "gameye-unreal-server", "gameye-web-server"]);
     expect(out).toContain('"description": "The gameye-containerize skill. Use it for gameye-containerize things."');
     expect(out).toContain('"version": "1.2.0"');
     expect(out).toContain('"references/registries.md": "# Registries\\n"');
@@ -104,8 +171,77 @@ describe("bundle-skills", () => {
     expect(block).not.toContain("Not a contract item");
   });
 
-  it("leaves an empty templates index", () => {
-    expect(bundle(INPUT)).toMatch(/export const BUNDLED_TEMPLATES: readonly BundledTemplate\[\] = \[\];/);
+  it("extracts every engine and kind from its markers, with skill, section, language, exact code and note", () => {
+    const templates = templatesOf(bundle(INPUT));
+    expect(templates.map((t) => `${t.engine}/${t.kind}`)).toEqual(ENGINES.flatMap((e) => KINDS.map((k) => `${e}/${k}`)));
+    for (const engine of ENGINES) {
+      const dockerfile = templates.find((t) => t.engine === engine && t.kind === "dockerfile")!;
+      expect(dockerfile).toEqual({
+        engine,
+        kind: "dockerfile",
+        skill: `gameye-${engine}-server`,
+        section: "Container specifics",
+        language: "dockerfile",
+        code: `FROM debian:bookworm-slim\nUSER game\nEXPOSE 7777/udp\nENTRYPOINT ["/server/${engine}"]\n`,
+      });
+      const hook = templates.find((t) => t.engine === engine && t.kind === "shutdown-hook")!;
+      expect(hook).toEqual({
+        engine,
+        kind: "shutdown-hook",
+        skill: `gameye-${engine}-server`,
+        section: "Shutdown",
+        language: "text",
+        code: `on SIGTERM: flush ${engine} and exit 0\n`,
+        note: `Tested on ${engine} 1.2.3; rerun the drain test after an upgrade.`,
+      });
+    }
+  });
+
+  it("exports the engines and kinds it requires", () => {
+    const out = bundle(INPUT);
+    expect(out).toContain(`export const TEMPLATE_ENGINES = ${JSON.stringify(ENGINES)} as const;`);
+    expect(out).toContain(`export const TEMPLATE_KINDS = ${JSON.stringify(KINDS)} as const;`);
+  });
+
+  it.each(ENGINES.flatMap((e) => KINDS.map((k) => [e, k] as const)))("fails naming the skill and kind when %s/%s has no markers", (engine, kind) => {
+    const input = withSkill(engine, (t) =>
+      t.replace(`<!-- gameye-template: ${engine}/${kind} -->\n`, "").replace(
+        kind === "dockerfile" ? /(```dockerfile[\s\S]*?```\n)<!-- \/gameye-template -->\n/ : /(```text[\s\S]*?```\n)<!-- \/gameye-template -->\n/,
+        "$1"
+      )
+    );
+    const err = refusal(input);
+    expect(err).toContain(`gameye-${engine}-server`);
+    expect(err).toContain(kind);
+  });
+
+  it("fails when an engine skill is missing altogether", () => {
+    const files = { ...INPUT.files };
+    delete files["skills/gameye-unity-server/SKILL.md"];
+    const err = refusal({ ...INPUT, files });
+    expect(err).toContain("gameye-unity-server");
+    expect(err).toContain("dockerfile");
+  });
+
+  it("fails on an unclosed pair, a duplicate, an unknown engine or kind, a heading inside, or no fence", () => {
+    expect(refusal(withSkill("godot", (t) => t.replace(/(```dockerfile[\s\S]*?```\n)<!-- \/gameye-template -->\n/, "$1")))).toMatch(/gameye-godot-server.*(unclosed|not closed)/);
+    expect(refusal(withSkill("web", (t) => `${t}\n<!-- gameye-template: web/dockerfile -->\n${DOCKERFILE_BLOCK("web")}\n<!-- /gameye-template -->\n`))).toMatch(/web\/dockerfile.*more than once/);
+    expect(refusal(withSkill("unity", (t) => `${t}\n<!-- gameye-template: cryengine/dockerfile -->\n${DOCKERFILE_BLOCK("x")}\n<!-- /gameye-template -->\n`))).toMatch(/cryengine/);
+    expect(refusal(withSkill("unity", (t) => `${t}\n<!-- gameye-template: unity/compose -->\n${DOCKERFILE_BLOCK("x")}\n<!-- /gameye-template -->\n`))).toMatch(/compose/);
+    expect(refusal(withSkill("unreal", (t) => t.replace("Tested on unreal 1.2.3", "## Heading\nTested")))).toMatch(/gameye-unreal-server.*heading/);
+    expect(refusal(withSkill("unreal", (t) => t.replace(HOOK_BLOCK("unreal"), "no code here")))).toMatch(/gameye-unreal-server.*unreal\/shutdown-hook.*fenced block/);
+    expect(refusal(withSkill("unreal", (t) => t.replace(HOOK_BLOCK("unreal"), `${HOOK_BLOCK("unreal")}\n${HOOK_BLOCK("unreal")}`)))).toMatch(/exactly one fenced block/);
+  });
+
+  it("fails when a dockerfile template is not a dockerfile fence, or a template sits in another engine's skill", () => {
+    expect(refusal(withSkill("web", (t) => t.replace("```dockerfile", "```text")))).toMatch(/web\/dockerfile.*dockerfile/);
+    const moved = withSkill("web", (t) => t.replace("web/shutdown-hook", "unity/shutdown-hook"));
+    expect(refusal(moved)).toMatch(/unity\/shutdown-hook.*gameye-web-server/);
+  });
+
+  it("ignores marker-like lines inside other fenced blocks", () => {
+    const input = withSkill("web", (t) => `${t}\n\`\`\`\`markdown\n<!-- gameye-template: web/dockerfile -->\n\`\`\`dockerfile\nFROM x\n\`\`\`\n<!-- /gameye-template -->\n\`\`\`\`\n`);
+    expect(templatesOf(bundle(input)).find((t) => t.engine === "web" && t.kind === "dockerfile")!.code).toContain('ENTRYPOINT ["/server/web"]');
   });
 
   it("refuses input without a Pack version line", () => {
