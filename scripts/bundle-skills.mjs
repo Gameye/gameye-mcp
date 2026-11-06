@@ -15,7 +15,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const PACK_VERSION_RE = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m;
+export const PACK_VERSION_RE = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m;
+export const TAG_RE = /^v\d+\.\d+\.\d+$/;
 const FILE_RE = /^skills\/([a-z0-9][a-z0-9-]*)\/(SKILL\.md|references\/[A-Za-z0-9._-]+\.md)$/;
 const CONTRACT_SKILL = "gameye-containerize";
 const CONTRACT_HEADING = "## The container contract";
@@ -185,7 +186,7 @@ function collectTemplates(index) {
 
 export function bundleSkills(input) {
   const { tag, commit, files } = input ?? {};
-  if (typeof tag !== "string" || !/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`tag must look like v1.2.3, got ${tag}`);
+  if (typeof tag !== "string" || !TAG_RE.test(tag)) throw new Error(`tag must look like v1.2.3, got ${tag}`);
   if (typeof commit !== "string" || !/^[0-9a-f]{40}$/.test(commit)) throw new Error(`commit must be a 40-character hex SHA, got ${commit}`);
   if (!files || typeof files !== "object") throw new Error("files must be an object of path -> text");
 

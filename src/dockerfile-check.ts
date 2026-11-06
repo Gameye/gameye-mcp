@@ -6,6 +6,7 @@
 // check flags as a credential is redacted to `***` here, by the check itself;
 // the server's own token masking does not know about values in user input.
 
+import { MASK } from "./client.js";
 import { GuardError } from "./guards.js";
 
 export type Severity = "error" | "warning";
@@ -351,7 +352,7 @@ export function checkDockerfile(text: string, opts: { ports?: DeclaredPort[] } =
       add(
         "GC9-token-in-image",
         ins.line,
-        `${ins.keyword} ${name}${value === undefined ? "" : "=***"} puts ${gameye ? "a Gameye API token" : "a credential"} in the image or its build history.`,
+        `${ins.keyword} ${name}${value === undefined ? "" : `=${MASK}`} puts ${gameye ? "a Gameye API token" : "a credential"} in the image or its build history.`,
         `Remove it from the Dockerfile. The Gameye API token belongs to your backend only; pass only short-lived per-match values in the session env. Rotate the token if this was ever pushed. See ${SKILL}.`
       );
     }
@@ -364,7 +365,7 @@ export function checkDockerfile(text: string, opts: { ports?: DeclaredPort[] } =
 /** Replace every flagged credential value with `***`, wherever it appears. */
 function redact(findings: DockerfileFinding[], secrets: string[]): DockerfileFinding[] {
   const values = [...new Set(secrets)].filter((s) => s.length >= 4).sort((a, b) => b.length - a.length);
-  const clean = (t: string) => values.reduce((acc, v) => acc.split(v).join("***"), t);
+  const clean = (t: string) => values.reduce((acc, v) => acc.split(v).join(MASK), t);
   return findings.map((f) => ({ ...f, message: clean(f.message), fix: clean(f.fix) }));
 }
 

@@ -19,7 +19,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bundleSkills } from "./bundle-skills.mjs";
+import { PACK_VERSION_RE, TAG_RE, bundleSkills } from "./bundle-skills.mjs";
 
 const DEFAULT_SOURCE = "https://github.com/Gameye/gameye-skills.git";
 const OUTPUT = "src/generated/skills.ts";
@@ -82,7 +82,7 @@ async function collectFiles(checkout) {
 }
 
 const tag = (await readOrEmpty(resolve(repoRoot, PIN))).trim();
-if (!/^v\d+\.\d+\.\d+$/.test(tag)) fail(`${PIN} must hold one release tag like v1.6.1, got "${tag}"`);
+if (!TAG_RE.test(tag)) fail(`${PIN} must hold one release tag like v1.6.1, got "${tag}"`);
 
 const tmp = await mkdtemp(join(tmpdir(), "gameye-skills-"));
 let fresh;
@@ -96,7 +96,7 @@ try {
     fail(`could not check out ${tag} from ${source}: ${(err.stderr || err.message).toString().trim()}`);
   }
   const gameyeSkill = await readOrEmpty(join(checkout, "skills", "gameye", "SKILL.md"));
-  const packVersion = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m.exec(gameyeSkill)?.[1];
+  const packVersion = PACK_VERSION_RE.exec(gameyeSkill)?.[1];
   if (packVersion !== tag.slice(1)) {
     fail(`${tag} at ${source} has Pack version ${packVersion ?? "(none)"} in skills/gameye/SKILL.md, expected ${tag.slice(1)}. Nothing written.`);
   }

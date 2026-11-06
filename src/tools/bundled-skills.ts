@@ -13,7 +13,7 @@ import {
 export const BUNDLED_PACK_LINE = `Bundled Gameye skills pack: ${BUNDLED_SKILLS_PACK_VERSION} (gameye-skills ${BUNDLED_SKILLS_TAG}, commit ${BUNDLED_SKILLS_COMMIT.slice(0, 7)}).`;
 export const INSTALLED_WINS_LINE = "If an installed copy of the Gameye skills is newer, it wins.";
 
-const HEADER = `${BUNDLED_PACK_LINE}\n${INSTALLED_WINS_LINE}`;
+export const BUNDLED_HEADER = `${BUNDLED_PACK_LINE}\n${INSTALLED_WINS_LINE}`;
 
 const SKILL_FILE = "SKILL.md";
 
@@ -30,7 +30,7 @@ function skillNames(): string {
 }
 
 function refuse(text: string): ToolOutput {
-  return { text: `${HEADER}\n\n${text}`, isError: true };
+  return { text: `${BUNDLED_HEADER}\n\n${text}`, isError: true };
 }
 
 function filesOf(skill: BundledSkill): string[] {
@@ -52,7 +52,7 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
       requiresToken: false,
     },
     async () => {
-      const lines = [HEADER, ""];
+      const lines = [BUNDLED_HEADER, ""];
       for (const skill of BUNDLED_SKILLS) {
         lines.push(`• ${skill.name} (skill ${skill.version}): ${skill.description}`);
         lines.push(`  files: ${filesOf(skill).join(", ")}`);
@@ -95,7 +95,7 @@ export function registerBundledSkillsTools(server: McpServer, ctx: ServerContext
       if (!Object.hasOwn(skill.files, rel)) {
         return refuse(`No file "${rel}" in the bundled ${skill.name} skill. Files: ${filesOf(skill).join(", ")}.`);
       }
-      return [HEADER, `Skill: ${skill.name} ${skill.version} · ${rel}`, "", skill.files[rel]].join("\n");
+      return [BUNDLED_HEADER, `Skill: ${skill.name} ${skill.version} · ${rel}`, "", skill.files[rel]].join("\n");
     }
   );
 }

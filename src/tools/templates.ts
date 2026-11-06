@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { defineTool, type ServerContext } from "./common.js";
-import { BUNDLED_PACK_LINE, INSTALLED_WINS_LINE } from "./bundled-skills.js";
+import { BUNDLED_HEADER } from "./bundled-skills.js";
 import { BUNDLED_TEMPLATES, TEMPLATE_ENGINES, TEMPLATE_KINDS, type BundledTemplate } from "../generated/skills.js";
 
 /** A fence of backticks longer than any backtick run in the code, so the block cannot close early. */
@@ -13,8 +13,7 @@ function fenceFor(code: string): string {
 function formatTemplate(t: BundledTemplate): string {
   const fence = fenceFor(t.code);
   return [
-    BUNDLED_PACK_LINE,
-    INSTALLED_WINS_LINE,
+    BUNDLED_HEADER,
     `Template: ${t.engine}/${t.kind}, from the ${t.skill} skill, section "${t.section}".`,
     ...(t.note ? ["", `Note: ${t.note}`] : []),
     "",
