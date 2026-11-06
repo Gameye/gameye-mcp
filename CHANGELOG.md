@@ -2,7 +2,7 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
-## Unreleased
+## 0.5.1
 
 - Bundled skills pinned to gameye-skills `v1.7.1` (pack 1.7.1). No skill text changed; the bundled skill and template tools now report pack 1.7.1.
 
