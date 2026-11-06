@@ -12,6 +12,7 @@ import { registerTokenTools } from "./tokens.js";
 import { registerLogTools } from "./logs.js";
 import { registerArtifactTools } from "./artifacts.js";
 import { registerSkillsTools } from "./skills.js";
+import { registerBundledSkillsTools } from "./bundled-skills.js";
 
 /** Register every tool. */
 export function registerAllTools(
@@ -30,4 +31,5 @@ export function registerAllTools(
   registerArtifactTools(server, client, ctx);
   registerTokenTools(server, client, ctx);
   registerSkillsTools(server, ctx);
+  registerBundledSkillsTools(server, ctx);
 }

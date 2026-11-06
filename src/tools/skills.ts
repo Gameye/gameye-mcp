@@ -12,6 +12,7 @@ import {
   updateCommands,
   type SkillsEnv,
 } from "../skills.js";
+import { BUNDLED_SKILLS_PACK_VERSION } from "../generated/skills.js";
 
 const RELOAD_NOTE =
   "The running session keeps the skills it already loaded. Start a new session (in Claude Code, /reload-plugins also works for the plugin) to use the update.";
@@ -29,7 +30,9 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
         "Without apply it only checks and changes nothing. With apply=true it runs each outdated install's own updater " +
         "(npx skills update for the Gameye skills only, or claude plugin update) when the operator set " +
         `${ENABLE_UPDATE_ENV}=1; otherwise it lists the commands for the user to run. Ask the user before applying. ` +
-        "Updates come only through those package managers; this tool never downloads or follows skill text itself.",
+        `Also reports the skills pack bundled with this server (${BUNDLED_SKILLS_PACK_VERSION}). ` +
+        "Updates come only through those package managers. This server ships a pinned copy of the skills reviewed at build time; " +
+        "the skill and template tools never fetch skill text at runtime, and only gameye_update_skills reaches GitHub, when called.",
       inputSchema: {
         apply: z
           .boolean()
@@ -46,6 +49,7 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
     },
     async ({ apply, installedVersion }) => {
       const installs = await findSkillsInstalls(env);
+      const bundled = `Bundled with this server: pack ${BUNDLED_SKILLS_PACK_VERSION} (read it with gameye_list_skills and gameye_get_skill)`;
       let latest: string;
       try {
         latest = await fetchLatestPackVersion(env);
@@ -53,11 +57,12 @@ export function registerSkillsTools(server: McpServer, ctx: ServerContext, env: 
         const lines = [
           `Could not read the latest Gameye skills pack version from GitHub: ${err instanceof Error ? err.message : String(err)}`,
           "Nothing was updated.",
+          bundled,
         ];
         for (const install of installs) lines.push(`• ${describeInstall(install)}`);
         return { text: lines.join("\n"), isError: true };
       }
-      const lines = [`Latest Gameye skills pack: ${latest}`];
+      const lines = [`Latest Gameye skills pack: ${latest}`, bundled];
 
       if (installs.length === 0) {
         lines.push("No skills CLI or Claude Code plugin install of the Gameye skills was found.");

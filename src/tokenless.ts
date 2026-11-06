@@ -10,7 +10,12 @@ export const TOKEN_REQUIRED_MARKER = "Token required: no GAMEYE_API_TOKEN is con
  * Tools that work without a token. Every other tool needs one: `defineTool`
  * gates any tool that does not set `requiresToken: false`.
  */
-export const TOKEN_FREE_TOOLS: readonly string[] = ["gameye_context", "gameye_update_skills"];
+export const TOKEN_FREE_TOOLS: readonly string[] = [
+  "gameye_context",
+  "gameye_update_skills",
+  "gameye_list_skills",
+  "gameye_get_skill",
+];
 
 export type ScopeRecipeName = "Observer" | "Operator" | "Deployer" | "Token admin";
 

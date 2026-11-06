@@ -24,6 +24,8 @@
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "sync-spec": "node scripts/sync-spec.mjs",
     "check-spec": "node scripts/sync-spec.mjs --check",
+    "sync-skills": "node scripts/sync-skills.mjs",
+    "check-skills": "node scripts/sync-skills.mjs --check",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

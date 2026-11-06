@@ -1,0 +1,142 @@
+// Build src/generated/skills.ts from a pinned gameye-skills checkout. Pure:
+// the same input always gives the same bytes, so `npm run check-skills` can
+// compare the regenerated module with the committed one.
+//
+// Input (JSON): { tag, commit, files: { "skills/<name>/SKILL.md": text,
+//   "skills/<name>/references/<file>.md": text, ... } }
+// Output: a TypeScript module with the pack constants, the skill index with
+// every file's text, and the numbered container-contract items from
+// gameye-containerize.
+//
+// Usage: node scripts/bundle-skills.mjs < input.json > skills.ts
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const PACK_VERSION_RE = /^Pack version: (\d+\.\d+\.\d+)[ \t]*$/m;
+const FILE_RE = /^skills\/([a-z0-9][a-z0-9-]*)\/(SKILL\.md|references\/[A-Za-z0-9._-]+\.md)$/;
+const CONTRACT_SKILL = "gameye-containerize";
+const CONTRACT_HEADING = "## The container contract";
+
+const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** name, description and metadata.version from a SKILL.md frontmatter block. */
+function parseFrontmatter(path, text) {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
+  if (!m) throw new Error(`${path} has no frontmatter`);
+  const field = (re) => {
+    const v = re.exec(m[1])?.[1]?.trim();
+    return v?.replace(/^(["'])(.*)\1$/, "$2");
+  };
+  const name = field(/^name:[ \t]*(.+)$/m);
+  const description = field(/^description:[ \t]*(.+)$/m);
+  const version = field(/^metadata:[ \t]*\n(?:[ \t]+.*\n)*?[ \t]+version:[ \t]*(.+)$/m);
+  if (!name || !description || !version) throw new Error(`${path} frontmatter needs name, description and metadata.version`);
+  return { name, description, version };
+}
+
+/** The numbered items under "## The container contract", each as one line of text. */
+function extractContract(path, text) {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => l.trim() === CONTRACT_HEADING);
+  if (start < 0) throw new Error(`${path} has no "${CONTRACT_HEADING}" section`);
+  const items = [];
+  let current;
+  for (const line of lines.slice(start + 1)) {
+    if (/^#{1,6} /.test(line)) break;
+    const item = /^(\d+)\.\s+(.*)$/.exec(line);
+    if (item) {
+      current = { number: Number(item[1]), parts: [item[2].trim()] };
+      items.push(current);
+    } else if (current && /^\s+\S/.test(line)) {
+      current.parts.push(line.trim());
+    } else {
+      current = undefined;
+    }
+  }
+  if (items.length === 0) throw new Error(`${path} has no numbered items under "${CONTRACT_HEADING}"`);
+  items.forEach((it, i) => {
+    if (it.number !== i + 1) throw new Error(`${path} container contract items are not numbered 1..n`);
+  });
+  return items.map(({ number, parts }) => ({ number, text: parts.join(" ") }));
+}
+
+export function bundleSkills(input) {
+  const { tag, commit, files } = input ?? {};
+  if (typeof tag !== "string" || !/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`tag must look like v1.2.3, got ${tag}`);
+  if (typeof commit !== "string" || !/^[0-9a-f]{40}$/.test(commit)) throw new Error(`commit must be a 40-character hex SHA, got ${commit}`);
+  if (!files || typeof files !== "object") throw new Error("files must be an object of path -> text");
+
+  const skills = new Map();
+  for (const path of Object.keys(files).sort(byCodePoint)) {
+    const m = FILE_RE.exec(path);
+    if (!m) throw new Error(`unexpected file ${path}`);
+    if (typeof files[path] !== "string") throw new Error(`${path} must be text`);
+    const [, name, rel] = m;
+    if (!skills.has(name)) skills.set(name, {});
+    skills.get(name)[rel] = files[path];
+  }
+
+  const index = [];
+  for (const name of [...skills.keys()].sort(byCodePoint)) {
+    const skillFiles = skills.get(name);
+    const path = `skills/${name}/SKILL.md`;
+    if (skillFiles["SKILL.md"] === undefined) throw new Error(`${path} is missing`);
+    const fm = parseFrontmatter(path, skillFiles["SKILL.md"]);
+    if (fm.name !== name) throw new Error(`${path} frontmatter name is ${fm.name}, expected ${name}`);
+    const sortedFiles = Object.fromEntries(Object.keys(skillFiles).sort(byCodePoint).map((k) => [k, skillFiles[k]]));
+    index.push({ name, description: fm.description, version: fm.version, files: sortedFiles });
+  }
+
+  const packVersion = PACK_VERSION_RE.exec(files["skills/gameye/SKILL.md"] ?? "")?.[1];
+  if (!packVersion) throw new Error('skills/gameye/SKILL.md has no "Pack version: X.Y.Z" line');
+  const contractPath = `skills/${CONTRACT_SKILL}/SKILL.md`;
+  if (files[contractPath] === undefined) throw new Error(`${contractPath} is missing`);
+  const contract = extractContract(contractPath, files[contractPath]);
+
+  return `// Gameye skills pack, bundled for offline use.
+// Pack version: ${packVersion}
+// Tag: ${tag}
+// Source commit: ${commit}
+// Source: https://github.com/Gameye/gameye-skills
+// The bundled skill text is MIT licensed: Copyright (c) 2026 Gameye B.V.
+// Generated by scripts/sync-skills.mjs. Do not edit.
+
+export interface BundledSkill {
+  /** Directory and frontmatter name, e.g. "gameye-containerize". */
+  name: string;
+  description: string;
+  /** The skill's own metadata.version. */
+  version: string;
+  /** "SKILL.md" and "references/<file>.md", keyed by path relative to the skill. */
+  files: Readonly<Record<string, string>>;
+}
+
+export interface ContainerContractItem {
+  /** The item's number in gameye-containerize "The container contract". */
+  number: number;
+  text: string;
+}
+
+export interface BundledTemplate {
+  engine: string;
+  kind: string;
+  text: string;
+}
+
+export const BUNDLED_SKILLS_PACK_VERSION = ${JSON.stringify(packVersion)};
+export const BUNDLED_SKILLS_TAG = ${JSON.stringify(tag)};
+export const BUNDLED_SKILLS_COMMIT = ${JSON.stringify(commit)};
+
+export const BUNDLED_SKILLS: readonly BundledSkill[] = ${JSON.stringify(index, null, 2)};
+
+export const CONTAINER_CONTRACT: readonly ContainerContractItem[] = ${JSON.stringify(contract, null, 2)};
+
+/** Template blocks marked <!-- gameye-template: engine/kind --> in the pinned skills. None are extracted yet. */
+export const BUNDLED_TEMPLATES: readonly BundledTemplate[] = [];
+`;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  process.stdout.write(bundleSkills(JSON.parse(readFileSync(0, "utf8"))));
+}

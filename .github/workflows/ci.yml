@@ -25,6 +25,8 @@ jobs:
       - name: No high or critical advisories in runtime dependencies
         run: npm audit --omit=dev --audit-level=high
       - run: npm test
+      - name: Bundled skills match the gameye-skills tag in skills.pin
+        run: npm run check-skills
       - run: npx tsc --noEmit -p tsconfig.test.json
       - run: npm run build
       - name: Stdio smoke test
