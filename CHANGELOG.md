@@ -2,6 +2,10 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## Unreleased
+
+- Bundled skills pinned to gameye-skills `v1.7.1` (pack 1.7.1). No skill text changed; the bundled skill and template tools now report pack 1.7.1.
+
 ## 0.5.0
 
 - No-token mode: the server starts without `GAMEYE_API_TOKEN`, prints one line on stderr saying so, and registers the same tools. **Behaviour change:** the server no longer exits when `GAMEYE_API_TOKEN` is unset; an invalid `GAMEYE_ENV` or other configuration error still stops it. A token setting left as an unexpanded `${user_config.api_token}` placeholder counts as no token.
