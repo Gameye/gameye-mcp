@@ -5,7 +5,8 @@ name: Release
 # no npm token is stored anywhere. The publish job waits for approval in the
 # `release` environment; after it, publish-image pushes the multi-arch image
 # to ghcr.io/gameye/gameye-mcp, and publish-registry lists it in the MCP
-# Registry. See CONTRIBUTING.md, "Releasing".
+# Registry. Last, github-release creates the GitHub Release from the
+# CHANGELOG entry. See CONTRIBUTING.md, "Releasing".
 
 on:
   push:
@@ -27,6 +28,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       dist-tag: ${{ steps.version.outputs.dist-tag }}
+      latest: ${{ steps.notes.outputs.latest }}
       tarball: ${{ steps.pack.outputs.tarball }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,6 +49,29 @@ jobs:
           case "$version" in *-*) dist_tag=beta ;; *) dist_tag=latest ;; esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "dist-tag=$dist_tag" >> "$GITHUB_OUTPUT"
+
+      - name: CHANGELOG entry becomes the release notes
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v heading="## $VERSION" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > "$RUNNER_TEMP/release-notes.md"
+          [ -s "$RUNNER_TEMP/release-notes.md" ] || { echo "::error::CHANGELOG.md has no entry for $VERSION"; exit 1; }
+          # Latest only when no stable tag sorts above this one, so a patch to an
+          # older line never takes "Latest" from a newer release.
+          highest="$(git tag --list 'v*' --sort=-v:refname | grep -v -- - | head -n1)"
+          case "$VERSION" in *-*) latest=false ;; *) [ "$highest" = "v$VERSION" ] && latest=true || latest=false ;; esac
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Install gitleaks
         run: |
@@ -288,3 +313,32 @@ jobs:
         run: |
           ./mcp-publisher login github-oidc
           ./mcp-publisher publish
+
+  # Creates the GitHub Release for the tag once npm, the image and the registry
+  # all have the version, with the CHANGELOG entry as its notes. Holds
+  # contents: write, so it checks out nothing and runs only the gh CLI.
+  # Re-running it updates the existing release instead of failing.
+  github-release:
+    needs: [verify, publish-registry]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          LATEST: ${{ needs.verify.outputs.latest }}
+        run: |
+          flags=(--title "$TAG" --notes-file release-notes.md "--latest=$LATEST")
+          case "$VERSION" in *-*) flags+=(--prerelease) ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" "${flags[@]}"
+          else
+            gh release create "$TAG" --verify-tag "${flags[@]}"
+          fi
