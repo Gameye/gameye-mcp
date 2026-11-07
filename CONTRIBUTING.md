@@ -45,6 +45,7 @@ Releases are cut by maintainers from a version tag on `main`; npm publishing nee
 4. A maintainer approves the run in the `release` environment. It then publishes that exact tarball to npm through trusted publishing (GitHub OIDC), with provenance. Prereleases go to the `beta` dist-tag, so `npx -y gameye-mcp` keeps installing the latest stable version.
 5. Before anything publishes, the workflow also builds the container image for amd64 and arm64 and smoke-tests both. After npm, it pushes `ghcr.io/gameye/gameye-mcp`, tagged `X.Y.Z`, `X.Y` and (stable versions only) `latest`.
 6. Finally it lists the version in the MCP Registry from `server.json`, signing in with GitHub OIDC. Keep `server.json`'s versions equal to `package.json`; a unit test checks it.
+7. Last, it creates the GitHub Release for the tag, with that version's `CHANGELOG.md` section as the notes. The run fails at the start if `CHANGELOG.md` has no `## X.Y.Z` heading for the version. A stable version is marked Latest only when no higher stable tag exists; a prerelease is marked as one. Re-running the job updates the existing release.
 
 Version 0.1.0 was published by hand, because npm trusted publishing cannot create a new package; every later version goes through the workflow.
 
