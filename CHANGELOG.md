@@ -2,6 +2,10 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## 0.5.2
+
+- Raised the minimum runtime dependency versions so a fresh install can't resolve a release with a known advisory: `zod` to `^4.6.7` (GHSA-mrhx-c7xc-m3w5, memory exhaustion on oversized constrained collections, fixed in 4.6.6) and `@modelcontextprotocol/sdk` to `^1.32.2`. No tool, input or output changed. `npm audit` reports no vulnerabilities.
+
 ## 0.5.1
 
 - Bundled skills pinned to gameye-skills `v1.7.1` (pack 1.7.1). No skill text changed; the bundled skill and template tools now report pack 1.7.1.
