@@ -13,7 +13,7 @@ export function registerRegionTools(server: McpServer, client: GameyeClient, ctx
         "List the region names available to your organization in this environment. Use a region name when creating or editing an application. " +
         "To see which regions can host a specific image right now, use gameye_get_locations. Needs the region:read scope.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async () => {
       const { regions } = await client.listRegions();

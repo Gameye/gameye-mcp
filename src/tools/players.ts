@@ -32,7 +32,7 @@ export function registerPlayerTools(server: McpServer, client: GameyeClient, ctx
       description:
         "Register one or more players as joined in a Gameye session. Returns the session's player count and IDs as reported by the server. Pass dryRun=true to preview the request.",
       inputSchema: playersInput,
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async ({ session, players, dryRun }) => {
       if (dryRun) return formatDryRun(ctx, GameyeClient.playersRequest("join", { session, players }), client);
@@ -51,7 +51,7 @@ export function registerPlayerTools(server: McpServer, client: GameyeClient, ctx
       description:
         "Remove one or more players from a Gameye session. Returns the session's player count and IDs as reported by the server.",
       inputSchema: playersInput,
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async ({ session, players, dryRun }) => {
       if (dryRun) return formatDryRun(ctx, GameyeClient.playersRequest("leave", { session, players }), client);

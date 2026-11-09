@@ -33,7 +33,8 @@ export interface ToolDefinition<Shape extends z.ZodRawShape> {
   title: string;
   description: string;
   inputSchema: Shape;
-  annotations: ToolAnnotations;
+  /** All four hints, explicit: some directories reject a tool that omits any of them. */
+  annotations: ToolAnnotations & Required<Pick<ToolAnnotations, "readOnlyHint" | "destructiveHint" | "idempotentHint" | "openWorldHint">>;
   /** Extra hint appended to the error text for a GameyeError, e.g. for a 404. */
   errorHint?: (err: GameyeError) => string | undefined;
   /**

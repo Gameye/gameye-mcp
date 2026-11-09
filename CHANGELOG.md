@@ -2,6 +2,11 @@
 
 All notable changes to `gameye-mcp` are listed here. The project follows [semantic versioning](https://semver.org); until 1.0, a minor release may change tools, inputs or outputs.
 
+## 0.5.3
+
+- Every tool now sets all four MCP hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) to explicit values. Twelve tools left `destructiveHint` and/or `idempotentHint` unset; read-only tools now declare `destructiveHint: false` and `idempotentHint: true`, and `gameye_player_join` and `gameye_player_leave` declare `idempotentHint: false`. Some MCP directories reject a tool that omits any hint. The tool definition type now requires all four, so a new tool can't omit one. No tool behaviour changed.
+- `manifest.json` lists Gameye's privacy policy (`privacy_policies`), and the README has a Privacy section.
+
 ## 0.5.2
 
 - Raised the minimum runtime dependency versions so a fresh install can't resolve a release with a known advisory: `zod` to `^4.6.7` (GHSA-mrhx-c7xc-m3w5, memory exhaustion on oversized constrained collections, fixed in 4.6.6) and `@modelcontextprotocol/sdk` to `^1.32.2`. No tool, input or output changed. `npm audit` reports no vulnerabilities.

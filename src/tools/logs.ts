@@ -21,7 +21,7 @@ export function registerLogTools(server: McpServer, client: GameyeClient, ctx: S
           .optional()
           .describe("Ignored: MCP is request/response, so a snapshot is always fetched. Call again to see newer output."),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ id, follow }) => {
       const logs = await client.getLogs({ id });

@@ -31,7 +31,7 @@ export function registerDockerfileCheckTool(server: McpServer, ctx: ServerContex
           .optional()
           .describe("Optional: the ports and protocols the server binds, to check against EXPOSE"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       requiresToken: false,
     },
     async ({ dockerfile, ports }) => formatDockerfileReport(checkDockerfile(dockerfile, { ports }))

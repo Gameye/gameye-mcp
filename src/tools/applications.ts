@@ -80,7 +80,7 @@ export function registerApplicationTools(
       description:
         "List your organization's applications (images Gameye can run) with registry, repository, resources, regions and ports. Needs the application:read scope.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async () => {
       const { items } = await client.listApplications();
@@ -105,7 +105,7 @@ export function registerApplicationTools(
         page: z.number().int().min(1).max(1000).optional().describe("Page number, 1-1000 (server default 1)"),
         pageSize: z.number().int().min(1).max(1000).optional().describe("Tags per page, 1-1000 (server default 20)"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ name, page, pageSize }) => {
       const { versions } = await client.listRegistryTags(name, page, pageSize);
