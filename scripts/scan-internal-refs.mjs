@@ -141,7 +141,7 @@ function selfTest() {
     ["docs/notes.md", "core/internal/agent/session/stop.go", ["core-source-path"]],
     ["tests/unit/a.test.ts", "{file: internal/example/fixture/run.go}", []],
     ["README.md", "https://api.sandbox-gameye.gameye.net https://api.production-gameye.gameye.net https://helpdesk.gameye.com/", []],
-    ["README.md", "https://grafana.ops.gameye.net/", ["private-host"]],
+    ["README.md", "https://internal-host.example.gameye.net/", ["private-host"]],
     ["README.md", "https://gitlab.com/gameye/core", ["private-host"]],
     ["README.md", "git@gitlab.com:gameye/core.git", ["private-host"]],
     ["README.md", "deploy to planz-dev first", ["private-host"]],
