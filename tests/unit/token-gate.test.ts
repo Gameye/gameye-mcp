@@ -222,7 +222,7 @@ describe("fail closed", () => {
       mock.server,
       noTokenContext(),
       "gameye_future_tool",
-      { title: "Future", description: "d", inputSchema: { x: z.string().optional() }, annotations: { readOnlyHint: true, openWorldHint: true } },
+      { title: "Future", description: "d", inputSchema: { x: z.string().optional() }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
       handler
     );
     const res = await mock.handlers["gameye_future_tool"]({});
@@ -239,7 +239,7 @@ describe("fail closed", () => {
       mock.server,
       noTokenContext(),
       "gameye_offline_tool",
-      { title: "Offline", description: "d", inputSchema: {}, annotations: { readOnlyHint: true, openWorldHint: false }, requiresToken: false },
+      { title: "Offline", description: "d", inputSchema: {}, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, requiresToken: false },
       handler
     );
     const res = await mock.handlers["gameye_offline_tool"]({});
