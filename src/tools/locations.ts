@@ -15,7 +15,7 @@ export function registerLocationTools(server: McpServer, client: GameyeClient, c
       inputSchema: {
         image: z.string().describe("Docker image name to check availability for (e.g. 'csgo', 'nginx')"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ image }) => {
       const result = await client.getAvailableLocations(image);

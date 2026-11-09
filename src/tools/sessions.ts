@@ -118,7 +118,7 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
           .optional()
           .describe("Exclude sessions whose user labels match these key=value pairs"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async (args) => {
       const result = await client.listSessions(args);
@@ -153,7 +153,7 @@ export function registerSessionTools(server: McpServer, client: GameyeClient, ct
       inputSchema: {
         id: z.string().describe("Session ID to describe"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ id }) => {
       const s = await client.describeSession(id);

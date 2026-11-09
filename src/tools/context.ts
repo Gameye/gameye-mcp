@@ -14,7 +14,7 @@ export function registerContextTool(server: McpServer, ctx: ServerContext): void
       description:
         "Show which Gameye environment and host this server targets, the server version and the guardrail defaults. The environment is fixed when the server starts (GAMEYE_ENV / GAMEYE_API_URL) and cannot be changed by a tool call.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       requiresToken: false,
     },
     async () =>

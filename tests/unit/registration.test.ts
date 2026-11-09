@@ -37,7 +37,7 @@ describe("registration through the real MCP SDK", () => {
     expect(instructions).toContain(BETA_NOTICE);
   });
 
-  it("exposes every tool with annotations and openWorldHint set", async () => {
+  it("exposes every tool with all four hints set", async () => {
     const client = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
@@ -69,6 +69,8 @@ describe("registration through the real MCP SDK", () => {
       expect(t.annotations, t.name).toBeDefined();
       expect(typeof t.annotations?.readOnlyHint, t.name).toBe("boolean");
       expect(typeof t.annotations?.openWorldHint, t.name).toBe("boolean");
+      expect(typeof t.annotations?.destructiveHint, t.name).toBe("boolean");
+      expect(typeof t.annotations?.idempotentHint, t.name).toBe("boolean");
       expect(t.title, t.name).toBeTruthy();
     }
     const stop = tools.find((t) => t.name === "gameye_stop_session");

@@ -17,7 +17,7 @@ export function registerTagTools(server: McpServer, client: GameyeClient, ctx: S
         image: z.string().describe("Docker image name (e.g. 'csgo', 'tf2')"),
         version: z.string().describe("Docker image tag/version to verify (e.g. '1.2.3', 'latest')"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ region, image, version }) => {
       const result = await client.checkTag(region, image, version);
