@@ -1,6 +1,6 @@
 # Gameye MCP Server
 
-[![Discord](https://img.shields.io/badge/Discord-join%20chat-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/QvJ3KH5max)
+[![Discord](https://img.shields.io/badge/Discord-join%20chat-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/QvJ3KH5max) [![M8ven Verified](https://m8ven.ai/badge/mcp/gameye-gameye-mcp-15aqnd?variant=verified&v=de97e335603278aadf03537e75a566a7)](https://m8ven.ai/mcp/gameye-gameye-mcp-15aqnd?s=readme)
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server for the [Gameye](https://gameye.com) game server orchestration API. It lets an AI agent (Claude Code, Claude Desktop, Cursor, or any MCP client) launch and inspect game server sessions, check image tags and regions, and fetch logs and artifacts. You talk to it in plain language, and you don't have to leave your editor.
 
@@ -85,7 +85,7 @@ Most clients (Claude Desktop, Cursor, Windsurf and others) accept an `mcpServers
 
 Restart the client after you change its configuration.
 
-`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.4.0` (or `"args": ["-y", "gameye-mcp@0.4.0"]`).
+`npx -y gameye-mcp` runs the latest release. To stay on one version, name it: `npx -y gameye-mcp@0.5.2` (or `"args": ["-y", "gameye-mcp@0.5.2"]`).
 
 ### Windows
 
@@ -127,7 +127,7 @@ With Claude Code: `claude mcp add gameye --env GAMEYE_API_TOKEN=<your-token> -- 
 
 - Pass each variable with `-e NAME` (no value), so Docker copies it from the client's environment and the token never appears in the command line.
 - Keep `-i` and never add `-t`: a terminal mangles the JSON-RPC messages on stdout.
-- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.4.0`.
+- To stay on one version, use a version tag such as `ghcr.io/gameye/gameye-mcp:0.5.2`.
 - Files the server writes stay inside the container, and `--rm` deletes them:
   - `gameye_get_artifacts` saves its download under the temp directory. To keep it, mount a directory and point the temp directory at it: `-v /absolute/dir:/out -e TMPDIR=/out`. The path the tool reports is the container path; the file is in `/absolute/dir` on the host.
   - `gameye_create_token` writes to the `outputPath` you give it. Mount a directory the same way and pass an `outputPath` under `/out`.
